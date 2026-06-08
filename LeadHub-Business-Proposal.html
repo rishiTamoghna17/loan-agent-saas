@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeadHub - Business Proposal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #e0e0e0;
+        }
+        
+        .page {
+            background: white;
+            width: 8.5in;
+            height: 11in;
+            margin: 10px auto;
+            padding: 35px 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            page-break-after: always;
+            overflow: hidden;
+        }
+        
+        @media print {
+            body { 
+                background: white;
+                margin: 0;
+                padding: 0;
+            }
+            .page { 
+                margin: 0; 
+                box-shadow: none;
+                width: 100%;
+                height: auto;
+                page-break-after: always;
+            }
+        }
+        
+        .header {
+            border-bottom: 3px solid #1769ff;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1769ff;
+            margin-bottom: 5px;
+        }
+        
+        .tagline {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        h1 {
+            font-size: 24px;
+            color: #1769ff;
+            margin: 20px 0 12px 0;
+        }
+        
+        h2 {
+            font-size: 16px;
+            color: #1769ff;
+            margin: 18px 0 10px 0;
+        }
+        
+        h3 {
+            font-size: 14px;
+            color: #333;
+            margin: 12px 0 8px 0;
+        }
+        
+        p {
+            margin-bottom: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .highlight-box {
+            background: #f0f4ff;
+            border-left: 3px solid #1769ff;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        
+        .feature-item {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 3px;
+            border-left: 2px solid #1769ff;
+            font-size: 12px;
+        }
+        
+        .feature-item strong {
+            color: #1769ff;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .benefit-list {
+            list-style: none;
+            margin: 10px 0;
+            padding: 0;
+        }
+        
+        .benefit-list li {
+            padding: 4px 0 4px 24px;
+            position: relative;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        
+        .benefit-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #1769ff;
+            font-weight: bold;
+        }
+        
+        .section-divider {
+            height: 1px;
+            background: #ddd;
+            margin: 15px 0;
+        }
+        
+        .pricing-table, .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+        
+        .pricing-table th, .comparison-table th {
+            background: #1769ff;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .pricing-table td, .comparison-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+        }
+        
+        .pricing-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .contact-info {
+            background: #f0f4ff;
+            padding: 12px;
+            border-radius: 3px;
+            margin-top: 12px;
+            font-size: 13px;
+        }
+        
+        .testimonial {
+            background: #f0f4ff;
+            padding: 12px;
+            border-left: 3px solid #1769ff;
+            margin: 12px 0;
+            font-style: italic;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+        <div class="tagline">Professional Lead Management for Loan Agents</div>
+    </div>
+    
+    <h1 style="text-align: center; margin-top: 40px;">Transform Your Loan Business</h1>
+    
+    <p style="text-align: center; margin: 20px 0;">Professional website. Smart lead management. Real-time follow-up.</p>
+    
+    <div class="highlight-box" style="margin-top: 30px;">
+        <strong style="color: #1769ff;">What is LeadHub?</strong>
+        <p style="margin-top: 8px;">LeadHub is a simple platform that helps loan professionals build a professional online presence, capture customer leads, and manage them efficiently—without technical skills.</p>
+    </div>
+    
+    <h2>The Problem</h2>
+    <ul class="benefit-list">
+        <li>No professional website to attract customers</li>
+        <li>Leads scattered across emails and spreadsheets</li>
+        <li>Customers don't know how to reach you</li>
+        <li>Delayed follow-ups lose sales</li>
+        <li>Manual lead tracking wastes time</li>
+    </ul>
+    
+    <h2>The Solution</h2>
+    <p><strong>Everything in one platform:</strong></p>
+    <ul class="benefit-list">
+        <li>Your branded professional website</li>
+        <li>Automatic lead capture forms</li>
+        <li>Organized customer dashboard</li>
+        <li>WhatsApp integration</li>
+        <li>Follow-up reminders and analytics</li>
+    </ul>
+    
+    <div class="footer">
+        <p>© 2026 LeadHub | Professional Lead Management Platform</p>
+    </div>
+</div>
+
+<!-- PAGE 2: HOW IT WORKS -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+    </div>
+    
+    <h1>How It Works</h1>
+    
+    <h2>Your Customer Journey</h2>
+    <p><strong>Customer finds your site → Fills form → You get notified → WhatsApp follow-up → Convert to sale</strong></p>
+    
+    <h2>What You Get</h2>
+    
+    <div class="feature-grid">
+        <div class="feature-item">
+            <strong>Your Website</strong>
+            <p>Professional site with your name and logo. Available 24/7.</p>
+        </div>
+        <div class="feature-item">
+            <strong>Lead Forms</strong>
+            <p>Customers fill simple forms. No login needed.</p>
+        </div>
+    </div>
+    
+    <div class="feature-grid">
+        <div class="feature-item">
+            <strong>Customer Dashboard</strong>
+            <p>All leads in one place. Track status and notes.</p>
+        </div>
+        <div class="feature-item">
+            <strong>WhatsApp Contact</strong>
+            <p>Message customers instantly with one click.</p>
+        </div>
+    </div>
+    
+    <div class="feature-grid">
+        <div class="feature-item">
+            <strong>Reminders</strong>
+            <p>Get alerts for follow-ups. Never miss a sale.</p>
+        </div>
+        <div class="feature-item">
+            <strong>Analytics</strong>
+            <p>See visits, leads, and conversion rates.</p>
+        </div>
+    </div>
+    
+    <h2>Real Example</h2>
+    <div class="testimonial">
+        "Customer searches 'Home Loan in Bangalore' → Finds your LeadHub website → Fills form → You get instant email → Message on WhatsApp → Customer impressed by quick response → Deal closed."
+    </div>
+    
+    <div class="footer">
+        <p>Simple process. Real results.</p>
+    </div>
+</div>
+
+<!-- PAGE 3: FEATURES -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+    </div>
+    
+    <h1>Key Features</h1>
+    
+    <h2>Professional Website</h2>
+    <ul class="benefit-list">
+        <li>Deployed in minutes - no designer needed</li>
+        <li>Your logo, colors, and messaging</li>
+        <li>Mobile-friendly design</li>
+        <li>Available 24/7 for customers</li>
+    </ul>
+    
+    <h2>Lead Management</h2>
+    <ul class="benefit-list">
+        <li>All leads in one dashboard</li>
+        <li>Track status: New, Follow-up, Closed, Rejected</li>
+        <li>Add notes for each customer</li>
+        <li>Get follow-up reminders</li>
+    </ul>
+    
+    <h2>Customer Forms</h2>
+    <ul class="benefit-list">
+        <li>Pre-built form fields - ready to go</li>
+        <li>Works on mobile and desktop</li>
+        <li>Captures name, phone, loan amount, etc.</li>
+        <li>No customer login required</li>
+    </ul>
+    
+    <h2>Lead Analytics</h2>
+    <ul class="benefit-list">
+        <li>See website visits</li>
+        <li>Track lead submissions</li>
+        <li>Know your conversion rate</li>
+        <li>Understand which marketing works</li>
+    </ul>
+    
+    <h2>WhatsApp Integration</h2>
+    <ul class="benefit-list">
+        <li>Contact customers instantly</li>
+        <li>One-click messaging from dashboard</li>
+        <li>Customers prefer WhatsApp</li>
+        <li>Faster response = higher closure</li>
+    </ul>
+    
+    <div class="footer">
+        <p>Everything you need to run a modern loan business.</p>
+    </div>
+</div>
+
+<!-- PAGE 4: BUSINESS BENEFITS -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+    </div>
+    
+    <h1>Business Benefits & ROI</h1>
+    
+    <h2>Time Savings</h2>
+    <div class="highlight-box">
+        <strong>Save 10+ hours per week</strong>
+        <p>No more spreadsheets, email searching, or manual tracking. Everything organized in one place.</p>
+    </div>
+    
+    <h2>Lead Increase</h2>
+    <table class="pricing-table">
+        <tr>
+            <th>Metric</th>
+            <th>Without LeadHub</th>
+            <th>With LeadHub</th>
+        </tr>
+        <tr>
+            <td>Leads/month</td>
+            <td>10-15</td>
+            <td>25-40 (+150%)</td>
+        </tr>
+        <tr>
+            <td>Follow-up rate</td>
+            <td>60%</td>
+            <td>90%+</td>
+        </tr>
+        <tr>
+            <td>Closure rate</td>
+            <td>20%</td>
+            <td>35%+</td>
+        </tr>
+    </table>
+    
+    <h2>Real Revenue Example</h2>
+    <div class="highlight-box">
+        <p><strong>Home Loan Agent Scenario:</strong></p>
+        <p style="margin: 8px 0;">
+            Current: 2 loans/month × ₹50,000 = ₹1,00,000/month<br>
+            With LeadHub: 5 loans/month × ₹50,000 = ₹2,50,000/month<br>
+            <strong>Extra income: ₹1,50,000/month (2.5x growth)</strong>
+        </p>
+    </div>
+    
+    <h2>Cost vs. Alternatives</h2>
+    <table class="pricing-table">
+        <tr>
+            <th>Service</th>
+            <th>Monthly Cost</th>
+        </tr>
+        <tr>
+            <td>Website designer</td>
+            <td>₹10,000+</td>
+        </tr>
+        <tr>
+            <td>CRM software</td>
+            <td>₹5,000-15,000</td>
+        </tr>
+        <tr>
+            <td>Marketing tools</td>
+            <td>₹3,000-8,000</td>
+        </tr>
+        <tr style="background: #f0f4ff;">
+            <td><strong>LeadHub (all-in-one)</strong></td>
+            <td><strong>₹999-4,999</strong></td>
+        </tr>
+    </table>
+    
+    <p><strong>Save 70-80% while getting MORE features.</strong></p>
+    
+    <div class="footer">
+        <p>Increase leads • Close faster • Earn more • Work less</p>
+    </div>
+</div>
+
+<!-- PAGE 5: PRICING -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+    </div>
+    
+    <h1>Pricing Plans</h1>
+    
+    <h2>Start Free. Scale As You Grow.</h2>
+    
+    <div class="highlight-box">
+        <strong>14-Day Free Trial</strong>
+        <p>Try everything free. No credit card. No commitment.</p>
+    </div>
+    
+    <table class="pricing-table">
+        <tr>
+            <th style="width: 35%;">Feature</th>
+            <th style="width: 22%;">Trial</th>
+            <th style="width: 22%;">Starter</th>
+            <th style="width: 21%;">Pro</th>
+        </tr>
+        <tr>
+            <td><strong>Price</strong></td>
+            <td><strong>₹0</strong></td>
+            <td><strong>₹999</strong></td>
+            <td><strong>₹4,999</strong></td>
+        </tr>
+        <tr>
+            <td>Website</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+        </tr>
+        <tr>
+            <td>Lead Forms</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+        </tr>
+        <tr>
+            <td>Dashboard</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+        </tr>
+        <tr>
+            <td>WhatsApp</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+        </tr>
+        <tr>
+            <td>Analytics</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+        </tr>
+        <tr>
+            <td>Custom Domain</td>
+            <td>-</td>
+            <td>-</td>
+            <td>✓</td>
+        </tr>
+        <tr>
+            <td>Priority Support</td>
+            <td>-</td>
+            <td>-</td>
+            <td>✓</td>
+        </tr>
+    </table>
+    
+    <h2>Why This Works</h2>
+    <ul class="benefit-list">
+        <li>Starter plan pays for itself with 2 extra leads/month</li>
+        <li>Pro plan includes custom domain (worth ₹5,000+/year)</li>
+        <li>Cancel anytime - no contracts</li>
+        <li>Money-back guarantee within 30 days</li>
+    </ul>
+    
+    <div class="footer">
+        <p>Transparent pricing. No hidden fees. No lock-in.</p>
+    </div>
+</div>
+
+<!-- PAGE 6: GET STARTED -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+    </div>
+    
+    <h1>Get Started in 3 Steps</h1>
+    
+    <h2>Step 1: Sign Up (2 minutes)</h2>
+    <p>Create account with email and password. That's it.</p>
+    
+    <h2>Step 2: Setup Profile (5 minutes)</h2>
+    <p>Add your business name, services, logo, and WhatsApp number.</p>
+    
+    <h2>Step 3: Launch (Instant)</h2>
+    <p>Your website and dashboard are live. Start capturing leads immediately.</p>
+    
+    <h2>What You'll Achieve</h2>
+    
+    <table class="pricing-table">
+        <tr>
+            <th>Timeline</th>
+            <th>Achievement</th>
+        </tr>
+        <tr>
+            <td><strong>Week 1</strong></td>
+            <td>Website live. First leads captured. Dashboard set up.</td>
+        </tr>
+        <tr>
+            <td><strong>Month 1</strong></td>
+            <td>30-50 leads captured. 2-3 closed deals.</td>
+        </tr>
+        <tr>
+            <td><strong>Month 3</strong></td>
+            <td>100+ leads in system. 5-8 closed deals. ₹2-4 Lac extra revenue.</td>
+        </tr>
+        <tr>
+            <td><strong>Ongoing</strong></td>
+            <td>Passive lead flow. Repeat customers. Sustainable growth.</td>
+        </tr>
+    </table>
+    
+    <h2>Our Commitment</h2>
+    <ul class="benefit-list">
+        <li>30-day money-back guarantee</li>
+        <li>Free training and onboarding</li>
+        <li>24/7 customer support</li>
+        <li>Regular product updates</li>
+        <li>Marketing resources and tips</li>
+    </ul>
+    
+    <div class="footer">
+        <p>From signup to first lead: Less than 1 hour.</p>
+    </div>
+</div>
+
+<!-- PAGE 7: COMPARISON -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+    </div>
+    
+    <h1>LeadHub vs. Traditional Methods</h1>
+    
+    <table class="comparison-table">
+        <tr>
+            <th style="width: 30%;">Capability</th>
+            <th style="width: 17%;">No System</th>
+            <th style="width: 17%;">Spreadsheet</th>
+            <th style="width: 18%;">Expensive CRM</th>
+            <th style="width: 18%;">LeadHub</th>
+        </tr>
+        <tr>
+            <td>Website</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>Lead Forms</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>✅</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>Notifications</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>✅</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>WhatsApp</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>Analytics</td>
+            <td>❌</td>
+            <td>❌</td>
+            <td>✅</td>
+            <td>✅</td>
+        </tr>
+        <tr>
+            <td>Easy to Use</td>
+            <td>✅</td>
+            <td>✅</td>
+            <td>❌</td>
+            <td>✅</td>
+        </tr>
+        <tr style="background: #f0f4ff;">
+            <td><strong>Monthly Cost</strong></td>
+            <td>₹0</td>
+            <td>₹0</td>
+            <td>₹10-50k</td>
+            <td>₹999-4,999</td>
+        </tr>
+    </table>
+    
+    <h2>Frequently Asked Questions</h2>
+    
+    <h3>How long to set up?</h3>
+    <p>5-10 minutes. Fill in your details, upload logo, and you're live.</p>
+    
+    <h3>Do I need technical skills?</h3>
+    <p>No. If you can use WhatsApp and email, you can use LeadHub.</p>
+    
+    <h3>Can I use my own domain?</h3>
+    <p>Yes, in Professional plan. Connect your domain easily.</p>
+    
+    <h3>Can I export my data?</h3>
+    <p>100% yes. Download all leads as CSV anytime. Your data is always yours.</p>
+    
+    <h3>Is there a contract?</h3>
+    <p>No. Cancel anytime. Pay month-to-month.</p>
+    
+    <div class="footer">
+        <p>Questions? Contact our support team.</p>
+    </div>
+</div>
+
+<!-- PAGE 8: FINAL CTA -->
+<div class="page">
+    <div class="header">
+        <div class="logo">LeadHub</div>
+    </div>
+    
+    <h1 style="text-align: center;">Ready to Grow Your Business?</h1>
+    
+    <div class="highlight-box" style="text-align: center; margin: 30px 0; padding: 20px;">
+        <p style="font-size: 16px; margin: 0;"><strong>Start Your Free 14-Day Trial Today</strong></p>
+        <p style="margin: 10px 0 0 0; font-size: 12px;">No credit card required. No commitment.</p>
+    </div>
+    
+    <h2>What Happens Next?</h2>
+    <ul class="benefit-list">
+        <li>Trial starts instantly - test all features</li>
+        <li>Your website is live within minutes</li>
+        <li>We provide training and support</li>
+        <li>Try with no risk - 30-day money-back guarantee</li>
+    </ul>
+    
+    <h2>Your Success Timeline</h2>
+    <ul class="benefit-list">
+        <li>Week 1: Website live, first leads captured</li>
+        <li>Month 1: 30-50 new leads, 2-3 sales</li>
+        <li>Month 3: 100+ leads, ₹2-4 Lac extra revenue</li>
+    </ul>
+    
+    <div class="section-divider"></div>
+    
+    <h2 style="text-align: center;">Contact Us</h2>
+    <div class="contact-info">
+        <p style="text-align: center; margin: 0;">
+            <!-- <strong>Visit:</strong> www.leadhub.app<br> -->
+            <strong>Email:</strong> tamoghna171099@gmail.com<br>
+            <strong>WhatsApp:</strong> +91 7001-586-476
+        </p>
+    </div>
+    
+    <p style="text-align: center; margin-top: 20px; font-size: 12px;">
+        <strong>Don't wait.</strong> Your competitors are already using platforms like this. Start your free trial today.
+    </p>
+    
+    <p style="text-align: center; font-size: 12px; color: #1769ff; font-weight: bold;">
+        📊 More Leads | ⏱️ Less Work | 💰 More Money
+    </p>
+    
+    <div class="footer" style="margin-top: 30px;">
+        <p>© 2026 LeadHub | Professional Lead Management Platform</p>
+        <p style="font-size: 10px;">Helping loan professionals grow their business with simple technology.</p>
+    </div>
+</div>
+
+</body>
+
+</body>
+</html>
