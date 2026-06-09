@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureAdmin } from "@/app/admin/actions";
 import { 
   Users, 
   Mail, 
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 export default async function AdminDashboardPage() {
+  await ensureAdmin();
   const supabase = createClient();
 
   // Fetch basic stats

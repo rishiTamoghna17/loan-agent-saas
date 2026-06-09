@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureAdmin } from "@/app/admin/actions";
 import { ProspectImport } from "@/components/admin/prospect-import";
 import { 
   Search, 
@@ -16,6 +17,7 @@ export default async function ProspectsPage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
+  await ensureAdmin();
   const supabase = createClient();
   
   const statusFilter = searchParams.status as string;

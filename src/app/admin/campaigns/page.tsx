@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureAdmin } from "@/app/admin/actions";
 import { CampaignProspectTable } from "@/components/admin/campaign-prospect-table";
 
 export default async function CampaignsPage() {
+  await ensureAdmin();
   const supabase = createClient();
 
   const { data: prospects } = await supabase

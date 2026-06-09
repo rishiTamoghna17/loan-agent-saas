@@ -5,8 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-async function ensureAdmin() {
-  const cookieStore = cookies();
+export async function ensureAdmin() {
+  let cookieStore;
+  try {
+    cookieStore = cookies();
+  } catch {
+    // cookies() can throw in some contexts (e.g. static generation)
+  }
+
   const supabase = createClient();
   const { data, error } = await supabase.auth.getUser();
   
@@ -27,8 +33,8 @@ async function ensureAdmin() {
     throw new Error("Unauthorized");
   }
 
-  // Sync admin emails to database for RLS enforcement (cached via cookie)
-  const syncCookie = cookieStore.get("leadhub_admin_synced")?.value;
+  // Sync admin emails to database for RLS enforcement (cached via cookie if available)
+  const syncCookie = cookieStore?.get("leadhub_admin_synced")?.value;
   
   if (!syncCookie) {
     try {
@@ -52,17 +58,23 @@ async function ensureAdmin() {
         if (deleteError) throw deleteError;
       }
       
-      // Set a session cookie to avoid re-syncing in this session
-      // We use a short maxAge (e.g., 1 hour) to ensure it eventually re-syncs if config changes
-      cookieStore.set("leadhub_admin_synced", "true", { 
-        maxAge: 3600, 
-        path: "/", 
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === "production" 
-      });
-    } catch (dbError) {
+      // Try to set a session cookie to avoid re-syncing in this session
+      // This will only work in Server Actions or Route Handlers
+      if (cookieStore) {
+        try {
+          cookieStore.set("leadhub_admin_synced", "true", { 
+            maxAge: 3600, 
+            path: "/", 
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === "production" 
+          });
+        } catch {
+          // Ignore error if cookies cannot be set (e.g. during render)
+        }
+      }
+    } catch (dbError: any) {
       console.error("Admin Sync Error:", dbError);
-      throw new Error("Failed to synchronize admin permissions. Please try again later.");
+      throw new Error(`Failed to synchronize admin permissions: ${dbError.message || 'Unknown database error'}`);
     }
   }
 }

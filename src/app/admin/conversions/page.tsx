@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureAdmin } from "@/app/admin/actions";
 import { 
   TrendingUp, 
   User, 
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 export default async function ConversionsPage() {
+  await ensureAdmin();
   const supabase = createClient();
 
   const { data: conversions } = await supabase

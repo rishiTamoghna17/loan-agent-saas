@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureAdmin } from "@/app/admin/actions";
 import { AdminCharts } from "@/components/admin/admin-charts";
 import { 
   BarChart3, 
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 export default async function AnalyticsPage() {
+  await ensureAdmin();
   const supabase = createClient();
 
   // Fetch stats for rates
