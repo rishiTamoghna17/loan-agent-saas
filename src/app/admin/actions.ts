@@ -18,7 +18,7 @@ async function ensureAdmin() {
 
 export async function importProspects(prospects: any[]) {
   await ensureAdmin();
-  const supabase = createAdminClient();
+  const supabase = createClient();
 
   // Filter out invalid prospects (e.g. missing email)
   const validProspects = prospects.filter(p => p.email && p.email.includes("@"));
@@ -45,7 +45,7 @@ export async function importProspects(prospects: any[]) {
 
 export async function updateProspectStatus(id: string, status: string) {
   await ensureAdmin();
-  const supabase = createAdminClient();
+  const supabase = createClient();
   const { error } = await supabase
     .from("prospects")
     .update({ status })
