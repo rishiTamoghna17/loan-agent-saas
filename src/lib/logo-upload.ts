@@ -9,7 +9,6 @@ export async function uploadAgentLogo(userId: string, file: File) {
   validateLogoFile(file);
 
   const supabase = createAdminClient();
-  await ensureLogoBucket();
 
   return uploadAgentLogoWithClient(supabase, userId, file);
 }
@@ -63,23 +62,6 @@ export async function uploadLogoDataUrlWithClient(supabase: SupabaseClient, user
 
   const { data } = supabase.storage.from(LOGO_BUCKET).getPublicUrl(filePath);
   return data.publicUrl;
-}
-
-async function ensureLogoBucket() {
-  const supabase = createAdminClient();
-  const { error: getError } = await supabase.storage.getBucket(LOGO_BUCKET);
-
-  if (!getError) return;
-
-  const { error: createError } = await supabase.storage.createBucket(LOGO_BUCKET, {
-    public: true,
-    fileSizeLimit: MAX_LOGO_SIZE,
-    allowedMimeTypes: ALLOWED_LOGO_TYPES
-  });
-
-  if (createError && !createError.message.toLowerCase().includes("already exists")) {
-    throw new Error(createError.message);
-  }
 }
 
 function validateLogoFile(file: File) {

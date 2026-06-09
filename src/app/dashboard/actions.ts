@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { uploadAgentLogo } from "@/lib/logo-upload";
+import { uploadAgentLogoWithClient } from "@/lib/logo-upload";
 import { deleteLeadSchema, leadNoteSchema, leadStatusSchema, profileSchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 
@@ -95,10 +95,11 @@ export async function updateProfile(formData: FormData) {
   if (!parsed.success) return;
 
   const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return;
   let logoUrl = parsed.data.logo_url || null;
 
   if (logoFile instanceof File && logoFile.size > 0) {
-    logoUrl = await uploadAgentLogo(agent.user_id, logoFile);
+    logoUrl = await uploadAgentLogoWithClient(supabase, agent.user_id, logoFile);
   }
 
   const { error } = await supabase

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, BellRing, Building2, Globe2, MapPin, Mail, Phone, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, BellRing, Building2, Download, Globe2, MapPin, Mail, Phone, Trash2, UserRound } from "lucide-react";
 import { addLeadNote, deleteLead } from "./actions";
 import { ContactLeadButton } from "@/components/dashboard/contact-lead-button";
 import { LeadStatusSelect } from "@/components/dashboard/lead-status-select";
@@ -164,8 +164,12 @@ export default async function DashboardPage() {
       </section>
 
       <section className="card mt-6 overflow-hidden">
-        <div className="border-b border-slate-200 p-5">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-ink">Leads</h2>
+          <a href="/api/leads/export" className="btn-secondary">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </a>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1160px] text-left text-sm">

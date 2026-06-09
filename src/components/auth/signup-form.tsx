@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ImageUp, Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 import { PincodeAddressFields } from "@/components/address/pincode-address-fields";
+import { LogoFileInput } from "@/components/ui/logo-file-input";
 import { getFriendlyAuthError } from "@/lib/auth-errors";
 import { LOAN_PRODUCTS } from "@/lib/constants";
 import { createSlug } from "@/lib/format";
@@ -189,19 +190,7 @@ export function SignupForm() {
         <Field label="Logo URL (optional)" error={form.formState.errors.logo_url?.message}>
           <input className="field" placeholder="https://..." {...form.register("logo_url")} />
         </Field>
-        <label>
-          <span className="label">Upload logo image</span>
-          <div className="flex items-center gap-3 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
-            <ImageUp className="h-5 w-5 shrink-0 text-brand-blue" />
-            <input
-              type="file"
-              accept="image/*"
-              className="w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-blue file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-              onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
-            />
-          </div>
-          <span className="mt-1 block text-xs text-slate-500">PNG, JPG, or WebP up to 2 MB. Uploaded image overrides Logo URL.</span>
-        </label>
+        <LogoFileInput onFileChange={setLogoFile} />
         <Field label="Public slug" required error={form.formState.errors.slug?.message}>
           <div className="flex gap-2">
             <input className="field" {...form.register("slug")} />

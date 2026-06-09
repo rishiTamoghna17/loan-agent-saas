@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { uploadAgentLogo } from "@/lib/logo-upload";
+import { uploadAgentLogoWithClient } from "@/lib/logo-upload";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const publicUrl = await uploadAgentLogo(user.id, file);
+    const publicUrl = await uploadAgentLogoWithClient(supabase, user.id, file);
     return NextResponse.json({ publicUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Logo upload failed.";

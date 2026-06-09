@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { ImageUp } from "lucide-react";
 import { updateProfile } from "../actions";
 import { PincodeAddressFields } from "@/components/address/pincode-address-fields";
 import { PhoneWhatsappFields } from "@/components/dashboard/phone-whatsapp-fields";
 import { ServicesOfferedFields } from "@/components/dashboard/services-offered-fields";
 import { PendingButton } from "@/components/ui/pending-button";
+import { LogoFileInput } from "@/components/ui/logo-file-input";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ProfilePage() {
@@ -76,19 +76,7 @@ export default async function ProfilePage() {
               <div className="flex h-28 items-center justify-center rounded-md bg-blue-50 text-sm font-semibold text-blue-700">No logo</div>
             )}
           </div>
-          <label>
-            <span className="label">Upload new logo image</span>
-            <div className="flex items-center gap-3 rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
-              <ImageUp className="h-5 w-5 shrink-0 text-brand-blue" />
-              <input
-                type="file"
-                name="logo_file"
-                accept="image/*"
-                className="w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-blue file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-              />
-            </div>
-            <span className="mt-1 block text-xs text-slate-500">PNG, JPG, or WebP up to 2 MB. Uploaded image overrides Logo URL.</span>
-          </label>
+          <LogoFileInput name="logo_file" />
         </div>
 
         <label className="mt-4 block">

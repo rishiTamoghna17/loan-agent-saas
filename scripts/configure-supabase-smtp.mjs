@@ -9,7 +9,7 @@ const smtpPort = process.env.BREVO_SMTP_PORT || "587";
 const smtpUser = process.env.BREVO_SMTP_USERNAME;
 const smtpPass = process.env.BREVO_SMTP_PASSWORD;
 const senderEmail = process.env.BREVO_SMTP_SENDER_EMAIL;
-const senderName = process.env.BREVO_SMTP_SENDER_NAME || "LoanAgent";
+const senderName = process.env.BREVO_SMTP_SENDER_NAME || "LeadHub";
 
 const missing = [];
 if (!supabaseAccessToken) missing.push("SUPABASE_ACCESS_TOKEN");
