@@ -22,12 +22,13 @@ export function ProspectImport() {
       complete: async (results) => {
         try {
           const prospects = results.data.map((row: any) => ({
-            company_name: row.company_name || "",
-            name: row.name || "",
-            email: row.email || "",
-            phone: row.phone || "",
-            city: row.city || "",
-            loan_category: row.loan_category || "",
+            // Support both generic format and LeadHub specific CSV format
+            company_name: row.company_name || row["Business Name"] || "",
+            name: row.name || row["Contact Person"] || row["Business Name"] || "",
+            email: (row.email || row["Public Email"] || "").trim().toLowerCase(),
+            phone: row.phone || row["Public Phone"] || "",
+            city: row.city || row["City"] || "",
+            loan_category: row.loan_category || row["Loan Categories"] || "",
             status: "new",
             lead_score: 0
           }));
@@ -52,7 +53,7 @@ export function ProspectImport() {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-ink">Import Prospects</h2>
-      <p className="mb-4 text-sm text-slate-500">Upload a CSV file with columns: company_name, name, email, phone, city, loan_category</p>
+      <p className="mb-4 text-sm text-slate-500">Upload your LeadHub prospects CSV or a file with standard columns (name, email, city).</p>
       
       <div className="flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed border-slate-200 p-8">
         <input
