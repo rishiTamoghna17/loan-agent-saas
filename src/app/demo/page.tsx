@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   ArrowRight,
   BadgeIndianRupee,
@@ -29,7 +30,9 @@ const demoLeads = [
 export default function DemoPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-white">
-      <LinkTracker />
+      <Suspense fallback={null}>
+        <LinkTracker />
+      </Suspense>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-5">
           <Link href="/" className="flex min-w-0 items-center gap-3">
