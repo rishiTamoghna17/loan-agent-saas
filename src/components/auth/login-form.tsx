@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, LogIn, AlertCircle } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import { loginSchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/client";
 import type { z } from "zod";
@@ -14,18 +14,8 @@ type LoginInput = z.infer<typeof loginSchema>;
 
 export function LoginForm({ redirectedFrom, email }: { redirectedFrom?: string; email?: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [serverError, setServerError] = useState("");
-  const [configError, setConfigError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const error = searchParams.get("error");
-    if (error === "admin_config_missing") {
-      setConfigError("System configuration error: ADMIN_EMAILS is not set. Please contact the administrator.");
-    }
-  }, [searchParams]);
-
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: email ?? "", password: "" }
@@ -56,12 +46,6 @@ export function LoginForm({ redirectedFrom, email }: { redirectedFrom?: string; 
       </div>
 
       <div className="mt-6 space-y-4">
-        {configError && (
-          <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4 text-amber-800 border border-amber-200">
-            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-            <p className="text-sm font-medium">{configError}</p>
-          </div>
-        )}
         <div>
           <label className="label" htmlFor="email">Email</label>
           <input id="email" type="email" className="field" {...form.register("email")} />

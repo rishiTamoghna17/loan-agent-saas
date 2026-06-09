@@ -3,79 +3,16 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 
-export async function ensureAdmin() {
-  let cookieStore;
-  try {
-    cookieStore = cookies();
-  } catch {
-    // cookies() can throw in some contexts (e.g. static generation)
-  }
-
+async function ensureAdmin() {
   const supabase = createClient();
-  const { data, error } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   
-  if (error || !data?.user || !data.user.email) {
+  if (!user || !user.email) throw new Error("Unauthorized");
+  
+  const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase());
+  if (!adminEmails.includes(user.email.toLowerCase())) {
     throw new Error("Unauthorized");
-  }
-
-  const user = data.user;
-  const email = user.email!;
-  
-  const rawAdminEmails = process.env.ADMIN_EMAILS;
-  if (!rawAdminEmails || !rawAdminEmails.trim()) {
-    throw new Error("Server configuration error: ADMIN_EMAILS is not set");
-  }
-
-  const adminEmails = rawAdminEmails.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-  if (!adminEmails.includes(email.toLowerCase())) {
-    throw new Error("Unauthorized");
-  }
-
-  // Sync admin emails to database for RLS enforcement (cached via cookie if available)
-  const syncCookie = cookieStore?.get("leadhub_admin_synced")?.value;
-  
-  if (!syncCookie) {
-    try {
-      const adminClient = createAdminClient();
-      const { data: dbAdmins, error: fetchError } = await adminClient.from("admin_users").select("email");
-      
-      if (fetchError) throw fetchError;
-      
-      const dbAdminEmails = (dbAdmins || []).map(a => a.email.toLowerCase());
-      
-      const missingInDb = adminEmails.filter(email => !dbAdminEmails.includes(email));
-      if (missingInDb.length > 0) {
-        const { error: upsertError } = await adminClient.from("admin_users").upsert(missingInDb.map(email => ({ email })), { onConflict: "email" });
-        if (upsertError) throw upsertError;
-      }
-
-      // Remove admins that are no longer in the environment variable
-      const extraInDb = dbAdminEmails.filter(email => !adminEmails.includes(email));
-      if (extraInDb.length > 0) {
-        const { error: deleteError } = await adminClient.from("admin_users").delete().in("email", extraInDb);
-        if (deleteError) throw deleteError;
-      }
-      
-      // Try to set a session cookie to avoid re-syncing in this session
-      // This will only work in Server Actions or Route Handlers
-      if (cookieStore) {
-        try {
-          cookieStore.set("leadhub_admin_synced", "true", { 
-            maxAge: 3600, 
-            path: "/", 
-            httpOnly: true, 
-            secure: process.env.NODE_ENV === "production" 
-          });
-        } catch {
-          // Ignore error if cookies cannot be set (e.g. during render)
-        }
-      }
-    } catch (dbError: any) {
-      console.error("Admin Sync Error:", dbError);
-      throw new Error(`Failed to synchronize admin permissions: ${dbError.message || 'Unknown database error'}`);
-    }
   }
 }
 
