@@ -1,13 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { CampaignProspectTable } from "@/components/admin/campaign-prospect-table";
+import { getCampaignTemplates } from "@/app/admin/actions";
 
 export default async function CampaignsPage() {
   const supabase = createClient();
 
-  const { data: prospects } = await supabase
-    .from("prospects")
-    .select("*")
-    .order("lead_score", { ascending: false });
+  const [prospectsResult, templates] = await Promise.all([
+    supabase
+      .from("prospects")
+      .select("*")
+      .order("lead_score", { ascending: false }),
+    getCampaignTemplates()
+  ]);
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8">
@@ -16,7 +20,10 @@ export default async function CampaignsPage() {
         <p className="text-slate-500">Select prospects and send targeted outreach campaigns.</p>
       </div>
 
-      <CampaignProspectTable prospects={prospects || []} />
+      <CampaignProspectTable 
+        prospects={prospectsResult.data || []} 
+        customTemplates={templates}
+      />
     </div>
   );
 }

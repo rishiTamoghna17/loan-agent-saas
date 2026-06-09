@@ -1,14 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
 import { ProspectImport } from "@/components/admin/prospect-import";
+import { AddProspectForm } from "@/components/admin/add-prospect-form";
+import { getProspects } from "@/app/admin/actions";
+import Link from "next/link";
 import { 
   Search, 
-  Filter, 
   MoreHorizontal,
   Mail,
-  Linkedin,
-  Globe,
+  Phone,
   MapPin,
-  Badge
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 export default async function ProspectsPage({
@@ -16,22 +17,25 @@ export default async function ProspectsPage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const supabase = createClient();
-  
   const statusFilter = searchParams.status as string;
   const cityFilter = searchParams.city as string;
   const query = searchParams.q as string;
+  const page = parseInt(searchParams.page as string) || 1;
 
-  let dbQuery = supabase
-    .from("prospects")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const { 
+    prospects, 
+    count, 
+    totalPages,
+    pageSize
+  } = await getProspects({
+    page,
+    status: statusFilter,
+    city: cityFilter,
+    query
+  });
 
-  if (statusFilter) dbQuery = dbQuery.eq("status", statusFilter);
-  if (cityFilter) dbQuery = dbQuery.eq("city", cityFilter);
-  if (query) dbQuery = dbQuery.or(`name.ilike.%${query}%,email.ilike.%${query}%,company_name.ilike.%${query}%`);
-
-  const { data: prospects, error } = await dbQuery;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
   const getScoreBadgeColor = (score: number) => {
     if (score >= 100) return "bg-emerald-100 text-emerald-700 border-emerald-200";
@@ -47,12 +51,29 @@ export default async function ProspectsPage({
     return "Cold";
   };
 
+  const buildQueryString = (params: Record<string, any>) => {
+    const newParams = { ...searchParams, ...params };
+    const search = new URLSearchParams();
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value) search.set(key, String(value));
+    });
+    return search.toString();
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-8">
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-2xl font-bold text-ink">Prospects</h1>
           <p className="text-slate-500">Manage and track your potential customers.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {count !== null && (
+            <div className="mr-4 text-sm font-medium text-slate-500">
+              Total: <span className="text-ink">{count}</span>
+            </div>
+          )}
+          <AddProspectForm />
         </div>
       </div>
 
@@ -96,7 +117,7 @@ export default async function ProspectsPage({
                 </select>
               </div>
 
-              <button type="submit" className="w-full rounded-lg bg-primary py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90">
+              <button type="submit" className="btn-primary w-full">
                 Apply Filters
               </button>
             </form>
@@ -104,27 +125,39 @@ export default async function ProspectsPage({
         </div>
 
         <div className="lg:col-span-2">
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+            <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase text-slate-500 shadow-sm">
                   <tr>
-                    <th className="px-6 py-4">Prospect</th>
-                    <th className="px-6 py-4">Score</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Location</th>
-                    <th className="px-6 py-4">Actions</th>
+                    <th className="px-6 py-4 w-12 text-center bg-slate-50">#</th>
+                    <th className="px-6 py-4 bg-slate-50">Prospect</th>
+                    <th className="px-6 py-4 bg-slate-50">Score</th>
+                    <th className="px-6 py-4 bg-slate-50">Status</th>
+                    <th className="px-6 py-4 bg-slate-50">Location</th>
+                    <th className="px-6 py-4 bg-slate-50">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {prospects?.map((prospect) => (
+                  {prospects?.map((prospect, index) => (
                     <tr key={prospect.id} className="hover:bg-slate-50/50">
+                      <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs">
+                        {from + index + 1}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-ink">{prospect.name}</div>
                         <div className="text-xs text-slate-500">{prospect.company_name}</div>
-                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
-                          <Mail className="h-3 w-3" />
-                          {prospect.email}
+                        <div className="mt-1 flex flex-col gap-1 text-xs text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3 w-3" />
+                            {prospect.email}
+                          </div>
+                          {prospect.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-3 w-3" />
+                              {prospect.phone}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -150,7 +183,7 @@ export default async function ProspectsPage({
                   ))}
                   {(!prospects || prospects.length === 0) && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                         No prospects found. Import some to get started!
                       </td>
                     </tr>
@@ -158,6 +191,31 @@ export default async function ProspectsPage({
                 </tbody>
               </table>
             </div>
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 mt-auto">
+                <div className="text-xs font-medium text-slate-500">
+                  Showing <span className="text-ink">{from + 1}</span> to <span className="text-ink">{Math.min(to + 1, count || 0)}</span> of <span className="text-ink">{count}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/admin/prospects?${buildQueryString({ page: page - 1 })}`}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Link>
+                  <div className="text-xs font-semibold text-slate-600">
+                    Page {page} of {totalPages}
+                  </div>
+                  <Link
+                    href={`/admin/prospects?${buildQueryString({ page: page + 1 })}`}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 ${page >= totalPages ? "pointer-events-none opacity-50" : ""}`}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

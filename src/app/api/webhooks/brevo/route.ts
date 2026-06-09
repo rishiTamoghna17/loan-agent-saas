@@ -11,10 +11,15 @@ export async function POST(req: Request) {
     const events = Array.isArray(payload) ? payload : [payload];
 
     for (const event of events) {
-      const messageId = event["message-id"];
+      const messageId = event["message-id"] || event.messageId;
       const eventType = event.event;
 
-      if (!messageId) continue;
+      console.log(`Processing Brevo event: ${eventType} for messageId: ${messageId}`);
+
+      if (!messageId) {
+        console.warn("Webhook event missing messageId:", event);
+        continue;
+      }
 
       const supabase = createAdminClient();
 

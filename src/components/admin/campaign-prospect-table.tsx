@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import { CampaignSender } from "@/components/admin/campaign-sender";
-import { Mail, MapPin, Search } from "lucide-react";
+import { Mail, MapPin, Search, Phone } from "lucide-react";
 
-export function CampaignProspectTable({ prospects }: { prospects: any[] }) {
+export function CampaignProspectTable({ 
+  prospects, 
+  customTemplates = [] 
+}: { 
+  prospects: any[]; 
+  customTemplates?: any[];
+}) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
 
@@ -39,7 +45,7 @@ export function CampaignProspectTable({ prospects }: { prospects: any[] }) {
               placeholder="Search prospects..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:border-primary focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:border-brand-blue focus:outline-none"
             />
           </div>
           <div className="text-sm font-medium text-slate-500">
@@ -47,29 +53,30 @@ export function CampaignProspectTable({ prospects }: { prospects: any[] }) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+          <div className="overflow-x-auto overflow-y-auto max-h-[520px]">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase text-slate-500 shadow-sm">
                 <tr>
-                  <th className="px-6 py-4">
+                  <th className="px-6 py-4 bg-slate-50 w-12">
                     <input 
                       type="checkbox" 
                       checked={selectedIds.length === filteredProspects.length && filteredProspects.length > 0}
                       onChange={toggleAll}
-                      className="rounded border-slate-300 text-primary focus:ring-primary"
+                      className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
                     />
                   </th>
-                  <th className="px-6 py-4">Prospect</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Score</th>
+                  <th className="px-6 py-4 bg-slate-50 w-12 text-center">#</th>
+                  <th className="px-6 py-4 bg-slate-50">Prospect</th>
+                  <th className="px-6 py-4 bg-slate-50">Status</th>
+                  <th className="px-6 py-4 bg-slate-50">Score</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredProspects.map((prospect) => (
+                {filteredProspects.map((prospect, index) => (
                   <tr 
                     key={prospect.id} 
-                    className={`hover:bg-slate-50/50 cursor-pointer ${selectedIds.includes(prospect.id) ? "bg-primary/5" : ""}`}
+                    className={`hover:bg-slate-50/50 cursor-pointer ${selectedIds.includes(prospect.id) ? "bg-blue-50/50" : ""}`}
                     onClick={() => toggleSelect(prospect.id)}
                   >
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
@@ -77,14 +84,25 @@ export function CampaignProspectTable({ prospects }: { prospects: any[] }) {
                         type="checkbox" 
                         checked={selectedIds.includes(prospect.id)}
                         onChange={() => toggleSelect(prospect.id)}
-                        className="rounded border-slate-300 text-primary focus:ring-primary"
+                        className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
                       />
+                    </td>
+                    <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs">
+                      {index + 1}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-ink">{prospect.name}</div>
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <Mail className="h-3 w-3" />
-                        {prospect.email}
+                      <div className="flex flex-col gap-1 text-xs text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3 w-3" />
+                          {prospect.email}
+                        </div>
+                        {prospect.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3" />
+                            {prospect.phone}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 capitalize text-slate-500">
@@ -97,7 +115,7 @@ export function CampaignProspectTable({ prospects }: { prospects: any[] }) {
                 ))}
                 {filteredProspects.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                       No prospects found.
                     </td>
                   </tr>
@@ -109,7 +127,10 @@ export function CampaignProspectTable({ prospects }: { prospects: any[] }) {
       </div>
 
       <div className="lg:col-span-1">
-        <CampaignSender selectedProspects={selectedIds} />
+        <CampaignSender 
+          selectedProspects={selectedIds} 
+          customTemplates={customTemplates}
+        />
       </div>
     </div>
   );

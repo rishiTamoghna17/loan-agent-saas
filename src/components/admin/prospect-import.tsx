@@ -69,7 +69,7 @@ export function ProspectImport() {
           className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg bg-slate-50 px-6 py-4 transition-colors hover:bg-slate-100 ${isImporting ? "pointer-events-none opacity-50" : ""}`}
         >
           {isImporting ? (
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
           ) : (
             <Upload className="h-8 w-8 text-slate-400" />
           )}
