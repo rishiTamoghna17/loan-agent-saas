@@ -4,6 +4,7 @@ import { getFriendlyAuthError } from "@/lib/auth-errors";
 import { logoFileToDataUrl, uploadAgentLogo } from "@/lib/logo-upload";
 import { signupSchema } from "@/lib/schemas";
 import { insertAgentProfile } from "@/lib/server-db";
+import { handleProspectConversion } from "@/lib/conversions";
 
 export const runtime = "nodejs";
 
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
       }
     }
 
-    await insertAgentProfile({
+    const agent = await insertAgentProfile({
       user_id: data.user.id,
       business_name: profile.business_name,
       agent_name: profile.agent_name,
@@ -105,6 +106,10 @@ export async function POST(request: Request) {
       banner_image_url: profile.banner_image_url || null,
       custom_domain: profile.custom_domain || null
     });
+
+    if (agent?.id) {
+      await handleProspectConversion(profile.email, agent.id);
+    }
   } catch (uploadOrProfileError) {
     const message = uploadOrProfileError instanceof Error ? uploadOrProfileError.message : "Could not create the agent profile.";
     return NextResponse.json({ error: message }, { status: 400 });

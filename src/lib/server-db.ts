@@ -52,15 +52,14 @@ export async function insertAgentProfile(row: AgentProfileRow) {
   const projectRef = process.env.SUPABASE_PROJECT_REF || getProjectRefFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 
   if (accessToken && projectRef) {
-    await insertAgentProfileWithManagementApi(row, accessToken, projectRef);
-    return;
+    return await insertAgentProfileWithManagementApi(row, accessToken, projectRef);
   }
 
-  await insertAgentProfileWithPostgres(row);
+  return await insertAgentProfileWithPostgres(row);
 }
 
 async function insertAgentProfileWithPostgres(row: AgentProfileRow) {
-  await getServerDb().query(
+  const result = await getServerDb().query(
     `
       insert into public.agents (
         user_id,
@@ -85,6 +84,7 @@ async function insertAgentProfileWithPostgres(row: AgentProfileRow) {
         custom_domain
       )
       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      returning id
     `,
     [
       row.user_id,
@@ -109,6 +109,7 @@ async function insertAgentProfileWithPostgres(row: AgentProfileRow) {
       row.custom_domain
     ]
   );
+  return result.rows[0];
 }
 
 async function insertAgentProfileWithManagementApi(row: AgentProfileRow, accessToken: string, projectRef: string) {
@@ -164,6 +165,7 @@ async function insertAgentProfileWithManagementApi(row: AgentProfileRow, accessT
           ${row.banner_image_url ? `'${escapeSql(row.banner_image_url)}'` : "null"},
           ${row.custom_domain ? `'${escapeSql(row.custom_domain)}'` : "null"}
         )
+        returning id
       `,
       read_only: false
     })
@@ -172,6 +174,9 @@ async function insertAgentProfileWithManagementApi(row: AgentProfileRow, accessT
   if (!response.ok) {
     throw new Error(await response.text());
   }
+
+  const result = await response.json();
+  return result[0];
 }
 
 function escapeSql(value: string) {

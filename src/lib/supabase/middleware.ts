@@ -31,6 +31,17 @@ export async function updateSession(request: NextRequest) {
     data: { user }
   } = await supabase.auth.getUser();
 
+  const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
+  if (isAdminPath) {
+    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(email => email.trim().toLowerCase());
+    if (!user || !user.email || !adminEmails.includes(user.email.toLowerCase())) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("redirectedFrom", request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
   const protectedPath = request.nextUrl.pathname.startsWith("/dashboard");
   if (protectedPath && !user) {
     const url = request.nextUrl.clone();
