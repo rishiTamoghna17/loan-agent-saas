@@ -27,29 +27,29 @@ export default async function AgentPublicPage({ params }: { params: { slug: stri
   const address = `${agent.city}, ${agent.district}, ${agent.state} - ${agent.pincode}`;
 
   return (
-    <main className="min-h-screen bg-white" style={{ ["--agent-primary" as string]: primaryColor }}>
+    <main className="min-h-screen overflow-x-hidden bg-white" style={{ ["--agent-primary" as string]: primaryColor }}>
       <AgentVisitTracker agentId={agent.id} slug={agent.slug} />
       <section className="border-b border-slate-200 bg-slate-50">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:py-12">
-          <div>
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="mx-auto grid min-w-0 max-w-7xl gap-8 px-4 py-8 sm:px-5 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center lg:py-12">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm sm:h-16 sm:w-16">
                 {agent.logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={agent.logo_url} alt={agent.business_name} className="h-14 w-14 rounded-md object-cover" />
+                  <img src={agent.logo_url} alt={agent.business_name} className="h-12 w-12 rounded-md object-cover sm:h-14 sm:w-14" />
                 ) : (
                   <span className="text-2xl font-bold text-brand-blue">{agent.business_name.slice(0, 1)}</span>
                 )}
               </div>
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-sm font-medium" style={{ color: primaryColor }}>
-                  <MapPin className="h-4 w-4" />
-                  <span className="truncate">{address}</span>
+                <p className="flex min-w-0 items-start gap-1.5 text-sm font-medium" style={{ color: primaryColor }}>
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="break-words">{address}</span>
                 </p>
-                <h1 className="mt-1 text-4xl font-bold tracking-tight text-ink sm:text-5xl lg:text-6xl">{heroTitle}</h1>
+                <h1 className="mt-1 break-words text-3xl font-bold tracking-tight text-ink sm:text-5xl lg:text-6xl">{heroTitle}</h1>
               </div>
             </div>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">{heroSubtitle}</p>
+            <p className="mt-5 max-w-3xl break-words text-base leading-7 text-slate-600 sm:mt-6 sm:text-lg sm:leading-8">{heroSubtitle}</p>
             {agent.banner_image_url ? (
               <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -86,7 +86,7 @@ export default async function AgentPublicPage({ params }: { params: { slug: stri
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+          <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-soft sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Loan products</p>
@@ -94,11 +94,11 @@ export default async function AgentPublicPage({ params }: { params: { slug: stri
               </div>
               <ShieldCheck className="h-6 w-6 text-brand-green" />
             </div>
-            <div className="mt-5 grid max-h-[430px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+            <div className="mt-5 grid max-h-[430px] min-w-0 gap-2 overflow-y-auto sm:grid-cols-2 sm:pr-1">
               {services.map((service) => (
                 <div key={service} className="flex min-h-12 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
                   <BadgeIndianRupee className="h-4 w-4 shrink-0 text-brand-green" />
-                  <span className="text-sm font-semibold text-slate-800">{service}</span>
+                  <span className="min-w-0 break-words text-sm font-semibold text-slate-800">{service}</span>
                 </div>
               ))}
             </div>
@@ -106,7 +106,7 @@ export default async function AgentPublicPage({ params }: { params: { slug: stri
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-4 px-5 py-8 md:grid-cols-3">
+      <section className="mx-auto grid min-w-0 max-w-7xl gap-4 px-4 py-8 sm:px-5 md:grid-cols-3">
         {["Fast eligibility checks", "Multiple loan categories", "WhatsApp-first support"].map((item) => (
           <div key={item} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <CheckCircle2 className="mb-3 h-5 w-5 text-brand-green" />
@@ -116,8 +116,8 @@ export default async function AgentPublicPage({ params }: { params: { slug: stri
         ))}
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-5 pb-12 pt-2 lg:grid-cols-[minmax(0,0.9fr)_minmax(440px,1.1fr)]">
-        <div className="space-y-6">
+      <section className="mx-auto grid min-w-0 max-w-7xl gap-6 px-4 pb-12 pt-2 sm:px-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(440px,1.1fr)]">
+        <div className="min-w-0 space-y-6">
           <div className="card p-5">
             <h2 className="text-xl font-bold text-ink">About {agent.agent_name}</h2>
             <p className="mt-3 leading-7 text-slate-600">
@@ -135,7 +135,7 @@ export default async function AgentPublicPage({ params }: { params: { slug: stri
             </div>
           </div>
         </div>
-        <div id="lead-form">
+        <div id="lead-form" className="min-w-0">
           <LeadForm 
             agentId={agent.id} 
             isTrialExpired={agent.plan_status === "expired" || (agent.plan_status === "trial" && new Date(agent.trial_ends_at).getTime() <= Date.now())}
