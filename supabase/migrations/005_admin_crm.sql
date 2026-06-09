@@ -102,6 +102,7 @@ alter table public.conversions enable row level security;
 -- but usually admin dashboards use service_role to bypass RLS.
 
 -- Updated at trigger for prospects
+drop trigger if exists set_prospects_updated_at on public.prospects;
 create trigger set_prospects_updated_at
 before update on public.prospects
 for each row execute function public.set_updated_at();

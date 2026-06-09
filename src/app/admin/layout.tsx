@@ -22,8 +22,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) redirect("/login");
 
   // Secondary check for admin email in server component
-  const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(email => email.trim().toLowerCase());
-  if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
+  const rawAdminEmails = process.env.ADMIN_EMAILS;
+  const adminEmails = (rawAdminEmails || "").split(",").map(email => email.trim().toLowerCase()).filter(Boolean);
+  
+  if (adminEmails.length === 0 || !user.email || !adminEmails.includes(user.email.toLowerCase())) {
     redirect("/dashboard");
   }
 

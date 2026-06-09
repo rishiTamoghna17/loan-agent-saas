@@ -1,9 +1,74 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+
+async function ensureAdmin() {
+  const cookieStore = cookies();
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.getUser();
+  
+  if (error || !data?.user || !data.user.email) {
+    throw new Error("Unauthorized");
+  }
+
+  const user = data.user;
+  const email = user.email!;
+  
+  const rawAdminEmails = process.env.ADMIN_EMAILS;
+  if (!rawAdminEmails || !rawAdminEmails.trim()) {
+    throw new Error("Server configuration error: ADMIN_EMAILS is not set");
+  }
+
+  const adminEmails = rawAdminEmails.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  if (!adminEmails.includes(email.toLowerCase())) {
+    throw new Error("Unauthorized");
+  }
+
+  // Sync admin emails to database for RLS enforcement (cached via cookie)
+  const syncCookie = cookieStore.get("leadhub_admin_synced")?.value;
+  
+  if (!syncCookie) {
+    try {
+      const adminClient = createAdminClient();
+      const { data: dbAdmins, error: fetchError } = await adminClient.from("admin_users").select("email");
+      
+      if (fetchError) throw fetchError;
+      
+      const dbAdminEmails = (dbAdmins || []).map(a => a.email.toLowerCase());
+      
+      const missingInDb = adminEmails.filter(email => !dbAdminEmails.includes(email));
+      if (missingInDb.length > 0) {
+        const { error: upsertError } = await adminClient.from("admin_users").upsert(missingInDb.map(email => ({ email })), { onConflict: "email" });
+        if (upsertError) throw upsertError;
+      }
+
+      // Remove admins that are no longer in the environment variable
+      const extraInDb = dbAdminEmails.filter(email => !adminEmails.includes(email));
+      if (extraInDb.length > 0) {
+        const { error: deleteError } = await adminClient.from("admin_users").delete().in("email", extraInDb);
+        if (deleteError) throw deleteError;
+      }
+      
+      // Set a session cookie to avoid re-syncing in this session
+      // We use a short maxAge (e.g., 1 hour) to ensure it eventually re-syncs if config changes
+      cookieStore.set("leadhub_admin_synced", "true", { 
+        maxAge: 3600, 
+        path: "/", 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === "production" 
+      });
+    } catch (dbError) {
+      console.error("Admin Sync Error:", dbError);
+      throw new Error("Failed to synchronize admin permissions. Please try again later.");
+    }
+  }
+}
 
 export async function importProspects(prospects: any[]) {
+  await ensureAdmin();
   const supabase = createAdminClient();
 
   // Filter out invalid prospects (e.g. missing email)
@@ -30,6 +95,7 @@ export async function importProspects(prospects: any[]) {
 }
 
 export async function updateProspectStatus(id: string, status: string) {
+  await ensureAdmin();
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("prospects")
@@ -41,6 +107,7 @@ export async function updateProspectStatus(id: string, status: string) {
 }
 
 export async function sendCampaignEmail(prospectIds: string[], campaignTemplate: string) {
+  await ensureAdmin();
   const supabase = createAdminClient();
   
   // Brevo API Key is often the same as the SMTP Password

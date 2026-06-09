@@ -33,7 +33,17 @@ export async function updateSession(request: NextRequest) {
 
   const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
   if (isAdminPath) {
-    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(email => email.trim().toLowerCase());
+    const rawAdminEmails = process.env.ADMIN_EMAILS;
+    const adminEmails = (rawAdminEmails || "").split(",").map(email => email.trim().toLowerCase()).filter(Boolean);
+    
+    if (adminEmails.length === 0) {
+      console.error("Middleware Error: ADMIN_EMAILS environment variable is not configured.");
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "admin_config_missing");
+      return NextResponse.redirect(url);
+    }
+
     if (!user || !user.email || !adminEmails.includes(user.email.toLowerCase())) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
