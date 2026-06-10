@@ -5,9 +5,7 @@ import { getCampaignBrochureAttachment } from "@/lib/campaign-attachments";
 import { buildCampaignLinks, maskProviderError } from "@/lib/campaign-tracking";
 import {
   createCampaignRenderContext,
-  getBuiltInCampaignTemplate,
-  renderCampaignTemplate,
-  BUILT_IN_CAMPAIGN_TEMPLATES
+  renderCampaignTemplate
 } from "@/lib/campaign-templates";
 import { revalidatePath } from "next/cache";
 
@@ -80,26 +78,19 @@ export async function getCampaignTemplates() {
       return [];
     }
     // Add default values for missing columns if migration not applied yet
-    const dbTemplates = (data || []).map(t => ({
+    return (data || []).map(t => ({
       ...t,
       brochure_attached: t.brochure_attached ?? false,
       pdf_url: t.pdf_url ?? null,
       pdf_urls: t.pdf_urls ?? (t.pdf_url ? [t.pdf_url] : []),
       show_header: t.show_header ?? true
     }));
-
-    // Combine built-in templates with database templates
-    return [
-      ...BUILT_IN_CAMPAIGN_TEMPLATES,
-      ...dbTemplates
-    ];
   } catch (error) {
     console.error("Unexpected error in getCampaignTemplates:", error);
     return [];
   }
 }
 
-const BUILT_IN_TEMPLATE_IDS = ["intro", "demo", "trial", "followup"];
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function saveCampaignTemplate(template: { 
@@ -115,7 +106,9 @@ export async function saveCampaignTemplate(template: {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
 
-  const isEditing = template.id && !BUILT_IN_TEMPLATE_IDS.includes(template.id) && uuidRegex.test(template.id);
+  console.log("saveCampaignTemplate called with:", template);
+
+  const isEditing = template.id && uuidRegex.test(template.id);
   
   try {
     const templateData: any = {
@@ -153,10 +146,14 @@ export async function saveCampaignTemplate(template: {
       data = updateResult.data;
       error = updateResult.error;
     } else {
-      // INSERT new custom template - don't include id so database uses gen_random_uuid()
+      // INSERT new custom template - GENERATE UUID MANUALLY
+      const insertData = { 
+        ...templateData, 
+        id: crypto.randomUUID() 
+      };
       const insertResult = await supabase
         .from("campaign_templates")
-        .insert([templateData])
+        .insert([insertData])
         .select()
         .single();
 
@@ -169,7 +166,7 @@ export async function saveCampaignTemplate(template: {
       if (error.message.includes("brochure_attached") || error.message.includes("pdf_url") || 
           error.message.includes("pdf_urls") || error.message.includes("show_header")) {
         
-        const coreTemplate = {
+        const coreTemplate: any = {
           name: template.name,
           subject: template.subject,
           content: template.content
@@ -186,6 +183,7 @@ export async function saveCampaignTemplate(template: {
           if (fallbackResult.error) throw fallbackResult.error;
           return { success: true, data: fallbackResult.data };
         } else {
+          coreTemplate.id = crypto.randomUUID();
           const fallbackResult = await supabase
             .from("campaign_templates")
             .insert([coreTemplate])
@@ -441,42 +439,30 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
     return { success: false, error: "No prospects found" };
   }
 
-  let template = getBuiltInCampaignTemplate(campaignTemplate);
-  let templateName = template?.name || campaignTemplate;
-  let brochureAttached = template?.brochure_attached || false;
-  let templatePdfUrls: string[] = [];
-
-  // If not a hardcoded template, try fetching from database
-  if (!template) {
-    const { data: customTemplate } = await adminSupabase
-      .from("campaign_templates")
-      .select("id, name, subject, content, brochure_attached, pdf_url, pdf_urls, show_header")
-      .eq("id", campaignTemplate)
-      .maybeSingle();
-    
-    if (customTemplate) {
-      template = {
-        id: customTemplate.id,
-        name: customTemplate.name,
-        subject: customTemplate.subject,
-        content: customTemplate.content,
-        description: "Custom admin template",
-        brochure_attached: customTemplate.brochure_attached,
-        pdf_url: customTemplate.pdf_url,
-        pdf_urls: customTemplate.pdf_urls,
-        show_header: customTemplate.show_header ?? true
-      };
-      templateName = customTemplate.name;
-      brochureAttached = customTemplate.brochure_attached || false;
-      templatePdfUrls = customTemplate.pdf_urls || (customTemplate.pdf_url ? [customTemplate.pdf_url] : []);
-    }
+  // Fetch template from database
+  const { data: customTemplate } = await adminSupabase
+    .from("campaign_templates")
+    .select("id, name, subject, content, brochure_attached, pdf_url, pdf_urls, show_header")
+    .eq("id", campaignTemplate)
+    .maybeSingle();
+  
+  if (!customTemplate) {
+    return { success: false, error: "Template not found" };
   }
 
-  if (!template) {
-    template = getBuiltInCampaignTemplate("intro")!;
-    templateName = template.name;
-    brochureAttached = false;
-  }
+  const template = {
+    id: customTemplate.id,
+    name: customTemplate.name,
+    subject: customTemplate.subject,
+    content: customTemplate.content,
+    brochure_attached: customTemplate.brochure_attached,
+    pdf_url: customTemplate.pdf_url,
+    pdf_urls: customTemplate.pdf_urls,
+    show_header: customTemplate.show_header ?? true
+  };
+  const templateName = customTemplate.name;
+  const brochureAttached = customTemplate.brochure_attached || false;
+  const templatePdfUrls = customTemplate.pdf_urls || (customTemplate.pdf_url ? [customTemplate.pdf_url] : []);
 
   let brochure = { attachments: [] as any[], metadata: { enabled: false, attached: false } };
   if (brochureAttached) {

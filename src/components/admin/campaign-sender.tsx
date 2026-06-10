@@ -5,13 +5,10 @@ import { Mail, Loader2, CheckCircle2, AlertCircle, Plus, Trash2, Save, Paperclip
 import { sendCampaignEmail, saveCampaignTemplate, deleteCampaignTemplate } from "@/app/admin/actions";
 import { useRouter } from "next/navigation";
 import {
-  BUILT_IN_CAMPAIGN_TEMPLATES,
   CAMPAIGN_VARIABLES,
   createPreviewCampaignContext,
   renderCampaignTemplate
 } from "@/lib/campaign-templates";
-
-const DEFAULT_TEMPLATE_IDS = BUILT_IN_CAMPAIGN_TEMPLATES.map((template) => template.id);
 
 interface BuilderState {
   name: string;
@@ -45,9 +42,10 @@ export function CampaignSender({
   const router = useRouter();
   
   const allTemplates = customTemplates;
+  const hasNoTemplates = allTemplates.length === 0;
   
   const [isSending, setIsSending] = useState(false);
-  const [templateId, setTemplateId] = useState(allTemplates[0]?.id || 'intro');
+  const [templateId, setTemplateId] = useState<string | undefined>(allTemplates[0]?.id);
   const [result, setResult] = useState<{ success: boolean; count?: number; failedCount?: number; error?: string } | null>(null);
   
   // Clear result when selection changes
@@ -56,7 +54,7 @@ export function CampaignSender({
   }, [selectedProspects]);
   
   // Builder state
-  const [isBuilding, setIsBuilding] = useState(false);
+  const [isBuilding, setIsBuilding] = useState(hasNoTemplates);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [builderData, setBuilderData] = useState<BuilderState>({ 
     name: "", 
@@ -77,14 +75,14 @@ export function CampaignSender({
     setShowHeader(selected?.show_header);
   }, [templateId, allTemplates]);
 
-  const selectedTemplate = allTemplates.find(t => t.id === templateId) || allTemplates[0] || {};
-  const renderedPreview = renderCampaignTemplate({
+  const selectedTemplate = allTemplates.find(t => t.id === templateId) || allTemplates[0] || null;
+  const renderedPreview = selectedTemplate ? renderCampaignTemplate({
     ...selectedTemplate,
     show_header: showHeader !== undefined ? showHeader : selectedTemplate.show_header ?? true
-  }, createPreviewCampaignContext());
+  }, createPreviewCampaignContext()) : null;
 
   const handleSend = async () => {
-    if (selectedProspects.length === 0) return;
+    if (selectedProspects.length === 0 || !templateId) return;
     
     setIsSending(true);
     setResult(null);
@@ -100,6 +98,7 @@ export function CampaignSender({
   };
 
   const startEdit = (template: any) => {
+    // Always edit existing database template
     setEditingId(template.id);
     setBuilderData({
       name: template.name,
@@ -178,7 +177,6 @@ export function CampaignSender({
     
     try {
       await deleteCampaignTemplate(id);
-      if (templateId === id) setTemplateId(BUILT_IN_CAMPAIGN_TEMPLATES[0].id);
       router.refresh();
     } catch (error) {
       console.error("Failed to delete template", error);
@@ -369,131 +367,150 @@ export function CampaignSender({
             Sending to <span className="font-bold text-ink">{selectedProspects.length}</span> selected prospects.
           </p>
 
-          <div>
-            <label className="text-sm font-medium text-slate-700">Choose Template</label>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              {allTemplates.map((t) => (
-                <div
-                  key={t.id}
-                  onClick={() => setTemplateId(t.id)}
-                  className={`group relative flex flex-col rounded-lg border p-4 text-left transition-all cursor-pointer ${
-                    templateId === t.id 
-                      ? "border-brand-blue bg-blue-50 ring-1 ring-brand-blue" 
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <span className={`text-sm font-bold ${templateId === t.id ? "text-brand-blue" : "text-ink"}`}>
-                    {t.name}
-                  </span>
-                  <span className="mt-1 text-[10px] text-slate-500 line-clamp-1">{t.subject}</span>
-                  {"description" in t && t.description ? (
-                    <span className="mt-2 text-[10px] leading-4 text-slate-400 line-clamp-2">{t.description}</span>
-                  ) : null}
-                  
-                  <div className="mt-2 flex items-center gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); startEdit(t); }}
-                      className="p-1 text-slate-400 hover:text-brand-blue"
-                      title="Edit template"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteTemplate(t.id, e)}
-                      className="p-1 text-slate-400 hover:text-red-500"
-                      title="Delete template"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+          {hasNoTemplates ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
+              <h3 className="text-lg font-semibold text-amber-800">No Templates Found</h3>
+              <p className="mt-2 text-sm text-amber-700">
+                Create your first email template to start sending campaigns!
+              </p>
+              <button
+                onClick={() => setIsBuilding(true)}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
+              >
+                <Plus className="h-4 w-4" />
+                Create First Template
+              </button>
             </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
-                <p className="mt-1 text-sm font-bold text-ink">{renderedPreview.subject}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {(selectedTemplate.brochure_attached || false) && (
-                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                    <Paperclip className="h-3 w-3" />
-                    {selectedTemplate.pdf_urls?.length && selectedTemplate.pdf_urls.length > 0
-                      ? `${selectedTemplate.pdf_urls.length} document(s)` 
-                      : "Brochure attached"}
-                  </div>
-                )}
-                <button
-                  onClick={() => setShowPreviewModal(true)}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-700 rounded-md border border-slate-300 bg-white hover:bg-slate-100"
-                >
-                  Full Preview
-                </button>
-              </div>
-            </div>
-
-            <div className="mb-3 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="brochure-toggle-preview"
-                checked={selectedTemplate.brochure_attached || false}
-                onChange={async (e) => {
-                    try {
-                      await saveCampaignTemplate({
-                        id: selectedTemplate.id,
-                        name: selectedTemplate.name,
-                        subject: selectedTemplate.subject,
-                        content: selectedTemplate.content,
-                        brochure_attached: e.target.checked,
-                        pdf_urls: selectedTemplate.pdf_urls
-                      });
-                      router.refresh();
-                    } catch (error) {
-                      console.error("Failed to update brochure toggle", error);
-                    }
-                  }}
-                className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
-              />
-              <label htmlFor="brochure-toggle-preview" className="text-xs font-medium text-slate-700">
-                Brochure Attached
-              </label>
-            </div>
-
-            <div className="mb-3 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="header-toggle-preview"
-                checked={showHeader !== undefined ? showHeader : selectedTemplate.show_header ?? true}
-                onChange={(e) => setShowHeader(e.target.checked)}
-                className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
-              />
-              <label htmlFor="header-toggle-preview" className="text-xs font-medium text-slate-700">
-                Show Header
-              </label>
-            </div>
-
-            {/* Show attached document names */}
-            {selectedTemplate.pdf_urls?.length > 0 && (
-              <div className="mb-3 space-y-1">
-                <p className="text-xs font-semibold text-slate-600">Attached Documents:</p>
-                {selectedTemplate.pdf_urls.map((url: string, idx: number) => (
-                  <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <Paperclip className="h-3 w-3" />
-                    <span className="truncate">{getFilenameFromUrl(url)}</span>
+          ) : (
+            <div>
+              <label className="text-sm font-medium text-slate-700">Choose Template</label>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                {allTemplates.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => setTemplateId(t.id)}
+                    className={`group relative flex flex-col rounded-lg border p-4 text-left transition-all cursor-pointer ${
+                      templateId === t.id 
+                        ? "border-brand-blue bg-blue-50 ring-1 ring-brand-blue" 
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <span className={`text-sm font-bold ${templateId === t.id ? "text-brand-blue" : "text-ink"}`}>
+                      {t.name}
+                    </span>
+                    <span className="mt-1 text-[10px] text-slate-500 line-clamp-1">{t.subject}</span>
+                    {"description" in t && t.description ? (
+                      <span className="mt-2 text-[10px] leading-4 text-slate-400 line-clamp-2">{t.description}</span>
+                    ) : null}
+                    
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); startEdit(t); }}
+                        className="p-1 text-slate-400 hover:text-brand-blue"
+                        title="Edit template"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteTemplate(t.id, e)}
+                        className="p-1 text-slate-400 hover:text-red-500"
+                        title="Delete template"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-            
-            {/* Render small preview */}
-            <div
-              className="max-h-40 overflow-y-auto rounded-md border border-slate-200 bg-white p-2"
-              dangerouslySetInnerHTML={{ __html: renderedPreview.htmlContent }}
-            />
-          </div>
+            </div>
+          )}
+
+          {!hasNoTemplates && templateId && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
+                  <p className="mt-1 text-sm font-bold text-ink">{renderedPreview.subject}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(selectedTemplate.brochure_attached || false) && (
+                    <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                      <Paperclip className="h-3 w-3" />
+                      {selectedTemplate.pdf_urls?.length && selectedTemplate.pdf_urls.length > 0
+                        ? `${selectedTemplate.pdf_urls.length} document(s)` 
+                        : "Brochure attached"}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setShowPreviewModal(true)}
+                    className="px-3 py-1.5 text-xs font-semibold text-slate-700 rounded-md border border-slate-300 bg-white hover:bg-slate-100"
+                  >
+                    Full Preview
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-3 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="brochure-toggle-preview"
+                  checked={selectedTemplate.brochure_attached || false}
+                  onChange={async (e) => {
+                      try {
+                        await saveCampaignTemplate({
+                          id: selectedTemplate.id,
+                          name: selectedTemplate.name,
+                          subject: selectedTemplate.subject,
+                          content: selectedTemplate.content,
+                          brochure_attached: e.target.checked,
+                          pdf_urls: selectedTemplate.pdf_urls,
+                          show_header: selectedTemplate.show_header ?? true
+                        });
+                        router.refresh();
+                      } catch (error) {
+                        console.error("Failed to update brochure toggle", error);
+                      }
+                    }}
+                  className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+                />
+                <label htmlFor="brochure-toggle-preview" className="text-xs font-medium text-slate-700">
+                  Brochure Attached
+                </label>
+              </div>
+
+              <div className="mb-3 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="header-toggle-preview"
+                  checked={showHeader !== undefined ? showHeader : selectedTemplate.show_header ?? true}
+                  onChange={(e) => setShowHeader(e.target.checked)}
+                  className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+                />
+                <label htmlFor="header-toggle-preview" className="text-xs font-medium text-slate-700">
+                  Show Header
+                </label>
+              </div>
+
+              {/* Show attached document names */}
+              {selectedTemplate.pdf_urls?.length > 0 && (
+                <div className="mb-3 space-y-1">
+                  <p className="text-xs font-semibold text-slate-600">Attached Documents:</p>
+                  {selectedTemplate.pdf_urls.map((url: string, idx: number) => (
+                    <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <Paperclip className="h-3 w-3" />
+                      <span className="truncate">{getFilenameFromUrl(url)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Render small preview */}
+              <div
+                className="max-h-40 overflow-y-auto rounded-md border border-slate-200 bg-white p-2"
+                dangerouslySetInnerHTML={{ __html: renderedPreview.htmlContent }}
+              />
+            </div>
+          )}
 
           {/* Full Preview Modal */}
           {showPreviewModal && (
@@ -548,18 +565,20 @@ export function CampaignSender({
             </div>
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={isSending || selectedProspects.length === 0}
-            className="btn-primary w-full py-3"
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Mail className="h-4 w-4" />
-            )}
-            {isSending ? "Sending..." : `Send ${selectedTemplate.name} Email`}
-          </button>
+          {!hasNoTemplates && templateId && (
+            <button
+              onClick={handleSend}
+              disabled={isSending || selectedProspects.length === 0}
+              className="btn-primary w-full py-3"
+            >
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4" />
+              )}
+              {isSending ? "Sending..." : `Send ${selectedTemplate.name} Email`}
+            </button>
+          )}
 
           {result && (
             <div className={`mt-4 flex items-center gap-2 rounded-lg px-4 py-2 text-sm ${result.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>

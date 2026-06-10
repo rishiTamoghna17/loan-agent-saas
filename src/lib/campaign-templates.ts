@@ -35,84 +35,6 @@ export const CAMPAIGN_VARIABLES = [
   "{{sender_email}}"
 ] as const;
 
-export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
-  {
-    id: "intro",
-    name: "Introduction",
-    subject: "Grow your loan business with LeadHub",
-    description: "First outreach for DSAs and loan agents who need a website plus CRM.",
-    brochure_attached: false,
-    show_header: true,
-    content: `
-      <p>Hi {{name}},</p>
-      <p>I work with loan agents and DSAs who want to manage enquiries more professionally.</p>
-      <p>Many agents still manage leads through WhatsApp chats, notebooks, and spreadsheets. LeadHub gives you a simple system to capture enquiries, track follow-ups, and contact customers faster.</p>
-      <ul>
-        <li>Your own loan website</li>
-        <li>Lead capture form</li>
-        <li>WhatsApp-ready CRM</li>
-        <li>Follow-up tracking</li>
-        <li>14-day free trial</li>
-      </ul>
-      <p>You can see the demo here: <a href="{{demo_url}}">Open LeadHub demo</a></p>
-      <p>Start your free trial here: <a href="{{signup_url}}">Create your LeadHub account</a></p>
-      <p>Regards,<br />{{sender_name}}<br />{{sender_phone}}<br />{{sender_email}}</p>
-    `
-  },
-  {
-    id: "demo",
-    name: "Demo Invitation",
-    subject: "Quick LeadHub demo for your loan enquiries",
-    description: "Invite a prospect to open the live demo and see the workflow.",
-    brochure_attached: false,
-    show_header: true,
-    content: `
-      <p>Hi {{name}},</p>
-      <p>I wanted to share a quick demo of LeadHub for {{company_name}}.</p>
-      <p>It shows how a customer can visit your loan website, submit an enquiry, and how you can follow up from one dashboard instead of searching through chats.</p>
-      <p><a href="{{demo_url}}">View the LeadHub demo</a></p>
-      <p>If this looks useful, you can start the 14-day free trial here: <a href="{{signup_url}}">Start free trial</a></p>
-      <p>Regards,<br />{{sender_name}}<br />{{sender_phone}}</p>
-    `
-  },
-  {
-    id: "trial",
-    name: "Trial Reminder",
-    subject: "Start your 14-day LeadHub trial",
-    description: "Encourage a warm prospect to start the working free trial.",
-    brochure_attached: false,
-    show_header: true,
-    content: `
-      <p>Hi {{name}},</p>
-      <p>If you are still managing loan enquiries manually, LeadHub can help you keep every lead, note, source, and follow-up in one place.</p>
-      <p>Your trial includes a public loan website, lead form, WhatsApp contact buttons, CRM dashboard, source tracking, and CSV export.</p>
-      <p>Start your free 14-day trial here: <a href="{{signup_url}}">Create your LeadHub account</a></p>
-      <p>You can also check the demo first: <a href="{{demo_url}}">Open demo</a></p>
-      <p>Regards,<br />{{sender_name}}<br />{{sender_phone}}<br />{{sender_email}}</p>
-    `
-  },
-  {
-    id: "followup",
-    name: "Follow-up",
-    subject: "Following up on LeadHub for your loan business",
-    description: "Gentle follow-up after a prior message or demo share.",
-    brochure_attached: false,
-    show_header: true,
-    content: `
-      <p>Hi {{name}},</p>
-      <p>Just following up on LeadHub.</p>
-      <p>It is built for loan agents and small DSA teams who want a professional website, structured enquiries, and a simple follow-up dashboard.</p>
-      <p>If you want, you can review the demo here: <a href="{{demo_url}}">LeadHub demo</a></p>
-      <p>Free trial signup: <a href="{{signup_url}}">Start your 14-day trial</a></p>
-      <p>Regards,<br />{{sender_name}}<br />{{sender_phone}}</p>
-    `
-  }
-];
-
-export function getBuiltInCampaignTemplate(id: string) {
-  return BUILT_IN_CAMPAIGN_TEMPLATES.find((template) => template.id === id);
-}
-
 export function createCampaignRenderContext(input: {
   prospect: {
     id: string;
@@ -156,7 +78,8 @@ export function createPreviewCampaignContext(): CampaignRenderContext {
   };
 }
 
-export function renderCampaignString(input: string, context: CampaignRenderContext) {
+export function renderCampaignString(input: string | undefined | null, context: CampaignRenderContext) {
+  const safeInput = input || "";
   const values: Record<string, string> = {
     id: context.id,
     name: context.name || "Sir",
@@ -170,7 +93,7 @@ export function renderCampaignString(input: string, context: CampaignRenderConte
     sender_email: context.sender_email
   };
 
-  return input.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key: string) => values[key] || "");
+  return safeInput.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key: string) => values[key] || "");
 }
 
 export function renderCampaignTemplate(template: Pick<CampaignTemplate, "subject" | "content" | "show_header">, context: CampaignRenderContext) {
@@ -185,19 +108,22 @@ export function renderCampaignTemplate(template: Pick<CampaignTemplate, "subject
   };
 }
 
-export function hasUnresolvedCampaignVariables(value: string) {
-  return /\{\{[a-zA-Z0-9_]+\}\}/.test(value);
+export function hasUnresolvedCampaignVariables(value: string | undefined | null) {
+  const safeValue = value || "";
+  return /\{\{[a-zA-Z0-9_]+\}\}/.test(safeValue);
 }
 
-function textToHtml(value: string) {
-  return value
+function textToHtml(value: string | undefined | null) {
+  const safeValue = value || "";
+  return safeValue
     .split(/\n{2,}/)
     .map((paragraph) => `<p>${escapeHtml(paragraph.trim()).replace(/\n/g, "<br />")}</p>`)
     .join("");
 }
 
-function stripHtml(value: string) {
-  return value
+function stripHtml(value: string | undefined | null) {
+  const safeValue = value || "";
+  return safeValue
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n\n")
     .replace(/<[^>]+>/g, "")
@@ -205,8 +131,9 @@ function stripHtml(value: string) {
     .trim();
 }
 
-function escapeHtml(value: string) {
-  return value
+function escapeHtml(value: string | undefined | null) {
+  const safeValue = value || "";
+  return safeValue
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
