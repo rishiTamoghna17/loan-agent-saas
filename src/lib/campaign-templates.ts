@@ -7,6 +7,7 @@ export type CampaignTemplate = {
   brochure_attached?: boolean;
   pdf_url?: string;
   pdf_urls?: string[];
+  show_header?: boolean;
 };
 
 export type CampaignRenderContext = {
@@ -41,6 +42,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     subject: "Grow your loan business with LeadHub",
     description: "First outreach for DSAs and loan agents who need a website plus CRM.",
     brochure_attached: false,
+    show_header: true,
     content: `
       <p>Hi {{name}},</p>
       <p>I work with loan agents and DSAs who want to manage enquiries more professionally.</p>
@@ -63,6 +65,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     subject: "Quick LeadHub demo for your loan enquiries",
     description: "Invite a prospect to open the live demo and see the workflow.",
     brochure_attached: false,
+    show_header: true,
     content: `
       <p>Hi {{name}},</p>
       <p>I wanted to share a quick demo of LeadHub for {{company_name}}.</p>
@@ -78,6 +81,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     subject: "Start your 14-day LeadHub trial",
     description: "Encourage a warm prospect to start the working free trial.",
     brochure_attached: false,
+    show_header: true,
     content: `
       <p>Hi {{name}},</p>
       <p>If you are still managing loan enquiries manually, LeadHub can help you keep every lead, note, source, and follow-up in one place.</p>
@@ -93,6 +97,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     subject: "Following up on LeadHub for your loan business",
     description: "Gentle follow-up after a prior message or demo share.",
     brochure_attached: false,
+    show_header: true,
     content: `
       <p>Hi {{name}},</p>
       <p>Just following up on LeadHub.</p>
@@ -168,14 +173,14 @@ export function renderCampaignString(input: string, context: CampaignRenderConte
   return input.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key: string) => values[key] || "");
 }
 
-export function renderCampaignTemplate(template: Pick<CampaignTemplate, "subject" | "content">, context: CampaignRenderContext) {
+export function renderCampaignTemplate(template: Pick<CampaignTemplate, "subject" | "content" | "show_header">, context: CampaignRenderContext) {
   const renderedSubject = renderCampaignString(template.subject, context);
   const renderedBody = renderCampaignString(template.content, context);
   const hasHtml = /<\/?[a-z][\s\S]*>/i.test(renderedBody);
 
   return {
     subject: renderedSubject,
-    htmlContent: wrapLeadHubEmail(hasHtml ? renderedBody : textToHtml(renderedBody)),
+    htmlContent: wrapLeadHubEmail(hasHtml ? renderedBody : textToHtml(renderedBody), template.show_header ?? true),
     previewText: stripHtml(renderedBody)
   };
 }
@@ -209,15 +214,17 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;");
 }
 
-function wrapLeadHubEmail(content: string) {
+function wrapLeadHubEmail(content: string, showHeader: boolean = true) {
   return `
     <div style="margin:0;padding:0;background:#f4f8fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
       <div style="max-width:640px;margin:0 auto;padding:28px 18px;">
         <div style="background:#ffffff;border:1px solid #dbe6f0;border-radius:16px;overflow:hidden;">
-          <div style="padding:24px 26px;background:#0f63ff;color:#ffffff;">
-            <div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;">LeadHub</div>
-            <div style="margin-top:4px;font-size:13px;opacity:0.9;">Loan Website • Lead CRM • Follow-up Tracking</div>
-          </div>
+          ${showHeader ? `
+            <div style="padding:24px 26px;background:#0f63ff;color:#ffffff;">
+              <div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;">LeadHub</div>
+              <div style="margin-top:4px;font-size:13px;opacity:0.9;">Loan Website • Lead CRM • Follow-up Tracking</div>
+            </div>
+          ` : ''}
           <div style="padding:26px;font-size:15px;line-height:1.7;color:#334155;">
             ${content}
             <div style="margin-top:24px;padding:16px;border-radius:12px;background:#ecfdf5;border:1px solid #bbf7d0;color:#14532d;">

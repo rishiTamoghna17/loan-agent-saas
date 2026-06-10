@@ -21,6 +21,7 @@ interface BuilderState {
   pdf_urls: string[];
   pdfFiles: File[];
   id?: string;
+  show_header: boolean;
 }
 
 // Helper to extract filename from URL
@@ -63,13 +64,24 @@ export function CampaignSender({
     content: "", 
     brochure_attached: false, 
     pdf_urls: [], 
-    pdfFiles: [] 
+    pdfFiles: [],
+    show_header: true
   });
   const [isSaving, setIsSaving] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showHeader, setShowHeader] = useState<boolean | undefined>(undefined);
+
+  // Update showHeader when template changes to use the template's default
+  useEffect(() => {
+    const selected = allTemplates.find(t => t.id === templateId);
+    setShowHeader(selected?.show_header);
+  }, [templateId, allTemplates]);
 
   const selectedTemplate = allTemplates.find(t => t.id === templateId) || allTemplates[0] || {};
-  const renderedPreview = renderCampaignTemplate(selectedTemplate, createPreviewCampaignContext());
+  const renderedPreview = renderCampaignTemplate({
+    ...selectedTemplate,
+    show_header: showHeader !== undefined ? showHeader : selectedTemplate.show_header ?? true
+  }, createPreviewCampaignContext());
 
   const handleSend = async () => {
     if (selectedProspects.length === 0) return;
@@ -78,7 +90,7 @@ export function CampaignSender({
     setResult(null);
     
     try {
-      const response = await sendCampaignEmail(selectedProspects, templateId);
+      const response = await sendCampaignEmail(selectedProspects, templateId, showHeader);
       setResult(response);
     } catch (error) {
       setResult({ success: false, error: "Failed to send campaign" });
@@ -96,7 +108,8 @@ export function CampaignSender({
       brochure_attached: template.brochure_attached || false,
       pdf_urls: template.pdf_urls || [],
       pdfFiles: [],
-      id: template.id
+      id: template.id,
+      show_header: template.show_header ?? true
     });
     setIsBuilding(true);
   };
@@ -110,7 +123,8 @@ export function CampaignSender({
       content: "", 
       brochure_attached: false, 
       pdf_urls: [], 
-      pdfFiles: [] 
+      pdfFiles: [],
+      show_header: true
     });
   };
 
@@ -144,7 +158,8 @@ export function CampaignSender({
         subject: builderData.subject,
         content: builderData.content,
         brochure_attached: builderData.brochure_attached,
-        pdf_urls: finalPdfUrls
+        pdf_urls: finalPdfUrls,
+        show_header: builderData.show_header
       });
       
       cancelEdit();
@@ -265,6 +280,19 @@ export function CampaignSender({
             />
             <label htmlFor="brochure-toggle-builder" className="text-xs font-medium text-slate-700">
               Brochure Attached
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="header-toggle-builder"
+              checked={builderData.show_header}
+              onChange={(e) => setBuilderData({ ...builderData, show_header: e.target.checked })}
+              className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+            />
+            <label htmlFor="header-toggle-builder" className="text-xs font-medium text-slate-700">
+              Show Header
             </label>
           </div>
 
@@ -431,6 +459,19 @@ export function CampaignSender({
               />
               <label htmlFor="brochure-toggle-preview" className="text-xs font-medium text-slate-700">
                 Brochure Attached
+              </label>
+            </div>
+
+            <div className="mb-3 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="header-toggle-preview"
+                checked={showHeader !== undefined ? showHeader : selectedTemplate.show_header ?? true}
+                onChange={(e) => setShowHeader(e.target.checked)}
+                className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+              />
+              <label htmlFor="header-toggle-preview" className="text-xs font-medium text-slate-700">
+                Show Header
               </label>
             </div>
 

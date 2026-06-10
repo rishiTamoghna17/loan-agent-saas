@@ -6,7 +6,8 @@ import { buildCampaignLinks, maskProviderError } from "@/lib/campaign-tracking";
 import {
   createCampaignRenderContext,
   getBuiltInCampaignTemplate,
-  renderCampaignTemplate
+  renderCampaignTemplate,
+  BUILT_IN_CAMPAIGN_TEMPLATES
 } from "@/lib/campaign-templates";
 import { revalidatePath } from "next/cache";
 
@@ -79,17 +80,27 @@ export async function getCampaignTemplates() {
       return [];
     }
     // Add default values for missing columns if migration not applied yet
-    return (data || []).map(t => ({
+    const dbTemplates = (data || []).map(t => ({
       ...t,
       brochure_attached: t.brochure_attached ?? false,
       pdf_url: t.pdf_url ?? null,
-      pdf_urls: t.pdf_urls ?? (t.pdf_url ? [t.pdf_url] : [])
+      pdf_urls: t.pdf_urls ?? (t.pdf_url ? [t.pdf_url] : []),
+      show_header: t.show_header ?? true
     }));
+
+    // Combine built-in templates with database templates
+    return [
+      ...BUILT_IN_CAMPAIGN_TEMPLATES,
+      ...dbTemplates
+    ];
   } catch (error) {
     console.error("Unexpected error in getCampaignTemplates:", error);
     return [];
   }
 }
+
+const BUILT_IN_TEMPLATE_IDS = ["intro", "demo", "trial", "followup"];
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function saveCampaignTemplate(template: { 
   name: string; 
@@ -99,46 +110,93 @@ export async function saveCampaignTemplate(template: {
   brochure_attached?: boolean; 
   pdf_url?: string | null;
   pdf_urls?: string[] | null;
+  show_header?: boolean;
 }) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
 
-  // Prepare safe template object with only core fields if new columns don't exist
-  const coreTemplate: any = { 
-    name: template.name, 
-    subject: template.subject, 
-    content: template.content 
-  };
-  if (template.id) {
-    coreTemplate.id = template.id;
-  }
+  const isEditing = template.id && !BUILT_IN_TEMPLATE_IDS.includes(template.id) && uuidRegex.test(template.id);
   
   try {
-    const upsertData: any = {
-      ...coreTemplate,
+    const templateData: any = {
+      name: template.name,
+      subject: template.subject,
+      content: template.content,
       brochure_attached: template.brochure_attached ?? false,
       pdf_url: template.pdf_url ?? (template.pdf_urls && template.pdf_urls.length > 0 ? template.pdf_urls[0] : null),
-      pdf_urls: template.pdf_urls ?? (template.pdf_url ? [template.pdf_url] : [])
+      pdf_urls: template.pdf_urls ?? (template.pdf_url ? [template.pdf_url] : []),
+      show_header: template.show_header ?? true
     };
 
-    const { data, error } = await supabase
-      .from("campaign_templates")
-      .upsert([upsertData])
-      .select()
-      .single();
+    let data, error;
+
+    if (isEditing) {
+      // UPDATE existing custom template
+      const { data: existing, error: checkErr } = await supabase
+        .from("campaign_templates")
+        .select("id")
+        .eq("id", template.id)
+        .maybeSingle();
+
+      if (checkErr) throw checkErr;
+      if (!existing) {
+        throw new Error("Template not found");
+      }
+
+      const updateResult = await supabase
+        .from("campaign_templates")
+        .update(templateData)
+        .eq("id", template.id)
+        .select()
+        .single();
+
+      data = updateResult.data;
+      error = updateResult.error;
+    } else {
+      // INSERT new custom template - don't include id so database uses gen_random_uuid()
+      const insertResult = await supabase
+        .from("campaign_templates")
+        .insert([templateData])
+        .select()
+        .single();
+
+      data = insertResult.data;
+      error = insertResult.error;
+    }
 
     if (error) {
-      // If error mentions missing columns, try again with just core fields
-      if (error.message.includes("brochure_attached") || error.message.includes("pdf_url") || error.message.includes("pdf_urls")) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from("campaign_templates")
-          .upsert([coreTemplate])
-          .select()
-          .single();
+      // Try again with just core fields if new columns not applied yet
+      if (error.message.includes("brochure_attached") || error.message.includes("pdf_url") || 
+          error.message.includes("pdf_urls") || error.message.includes("show_header")) {
+        
+        const coreTemplate = {
+          name: template.name,
+          subject: template.subject,
+          content: template.content
+        };
 
-        if (fallbackError) throw fallbackError;
-        return { success: true, data: fallbackData };
+        if (isEditing) {
+          const fallbackResult = await supabase
+            .from("campaign_templates")
+            .update(coreTemplate)
+            .eq("id", template.id)
+            .select()
+            .single();
+
+          if (fallbackResult.error) throw fallbackResult.error;
+          return { success: true, data: fallbackResult.data };
+        } else {
+          const fallbackResult = await supabase
+            .from("campaign_templates")
+            .insert([coreTemplate])
+            .select()
+            .single();
+
+          if (fallbackResult.error) throw fallbackResult.error;
+          return { success: true, data: fallbackResult.data };
+        }
       }
+
       throw error;
     }
 
@@ -352,7 +410,7 @@ export async function deleteProspect(id: string) {
   return { success: true };
 }
 
-export async function sendCampaignEmail(prospectIds: string[], campaignTemplate: string) {
+export async function sendCampaignEmail(prospectIds: string[], campaignTemplate: string, showHeader?: boolean) {
   await ensureAdmin();
   const adminSupabase = await getAdminSupabase();
   
@@ -392,7 +450,7 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
   if (!template) {
     const { data: customTemplate } = await adminSupabase
       .from("campaign_templates")
-      .select("id, name, subject, content, brochure_attached, pdf_url, pdf_urls")
+      .select("id, name, subject, content, brochure_attached, pdf_url, pdf_urls, show_header")
       .eq("id", campaignTemplate)
       .maybeSingle();
     
@@ -405,7 +463,8 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
         description: "Custom admin template",
         brochure_attached: customTemplate.brochure_attached,
         pdf_url: customTemplate.pdf_url,
-        pdf_urls: customTemplate.pdf_urls
+        pdf_urls: customTemplate.pdf_urls,
+        show_header: customTemplate.show_header ?? true
       };
       templateName = customTemplate.name;
       brochureAttached = customTemplate.brochure_attached || false;
@@ -437,7 +496,10 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
       senderPhone,
       senderEmail: senderContactEmail
     });
-    const rendered = renderCampaignTemplate(template, renderContext);
+    const rendered = renderCampaignTemplate({
+      ...template,
+      show_header: showHeader !== undefined ? showHeader : template.show_header ?? true
+    }, renderContext);
 
     const { data: campaignRow, error: createCampaignError } = await adminSupabase
       .from("email_campaigns")
