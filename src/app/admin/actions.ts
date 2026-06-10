@@ -169,6 +169,7 @@ export async function getProspects(options: {
   query?: string;
   disablePagination?: boolean;
   engagement?: 'opened' | 'clicked' | 'replied' | 'any';
+  includeEmailHistory?: boolean;
 }) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
@@ -266,28 +267,37 @@ export async function getProspects(options: {
     throw new Error(error.message);
   }
 
-  // Fetch email history for each prospect
-  const prospectsWithHistory = data ? await Promise.all(
-    data.map(async (prospect) => {
-      try {
-        const { data: history } = await supabase
-          .from("email_campaigns")
-          .select("template_name, status, created_at")
-          .eq("prospect_id", prospect.id)
-          .order("created_at", { ascending: false })
-          .limit(5);
-        return {
-          ...prospect,
-          emailHistory: history || []
-        };
-      } catch (err) {
-        return {
-          ...prospect,
-          emailHistory: []
-        };
+  let prospectsWithHistory = data || [];
+  const includeHistory = options.includeEmailHistory ?? true;
+  
+  if (data && data.length > 0 && includeHistory) {
+    const prospectIds = data.map((p: any) => p.id);
+    
+    // Get all email history for all prospects in single query!
+    const { data: allEmailHistory } = await supabase
+      .from("email_campaigns")
+      .select("prospect_id, template_name, status, created_at")
+      .in("prospect_id", prospectIds)
+      .order("created_at", { ascending: false });
+
+    // Group email history by prospect_id
+    const historyByProspectId: Record<string, any[]> = {};
+    if (allEmailHistory) {
+      for (const history of allEmailHistory) {
+        if (!historyByProspectId[history.prospect_id]) {
+          historyByProspectId[history.prospect_id] = [];
+        }
+        if (historyByProspectId[history.prospect_id].length < 5) {
+          historyByProspectId[history.prospect_id].push(history);
+        }
       }
-    })
-  ) : [];
+    }
+
+    prospectsWithHistory = data.map((p: any) => ({
+      ...p,
+      emailHistory: historyByProspectId[p.id] || []
+    }));
+  }
 
   return {
     prospects: prospectsWithHistory,

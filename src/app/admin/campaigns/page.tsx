@@ -6,7 +6,7 @@ export default async function CampaignsPage() {
   const campaignBaseUrl = getCampaignBaseUrl();
 
   const [prospectsResult, templates] = await Promise.all([
-    getProspects({ disablePagination: true }),
+    getProspects({ disablePagination: true, includeEmailHistory: false }),
     getCampaignTemplates()
   ]);
 
