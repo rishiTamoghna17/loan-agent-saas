@@ -1,7 +1,13 @@
 "use server";
 
 import { getAdminSupabase, requireAdminUser } from "@/lib/admin-auth";
+import { getCampaignBrochureAttachment } from "@/lib/campaign-attachments";
 import { buildCampaignLinks, maskProviderError } from "@/lib/campaign-tracking";
+import {
+  createCampaignRenderContext,
+  getBuiltInCampaignTemplate,
+  renderCampaignTemplate
+} from "@/lib/campaign-templates";
 import { revalidatePath } from "next/cache";
 
 async function ensureAdmin() {
@@ -171,6 +177,8 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
   const apiKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.BREVO_SMTP_SENDER_EMAIL || "hello@leadhub.in";
   const senderName = process.env.BREVO_SMTP_SENDER_NAME || "LeadHub";
+  const senderPhone = process.env.CAMPAIGN_SENDER_PHONE || "7001586476";
+  const senderContactEmail = process.env.CAMPAIGN_SENDER_CONTACT_EMAIL || "tamoghna171099@gmail.com";
 
   if (!apiKey) {
     console.error("Missing BREVO_API_KEY");
@@ -179,7 +187,7 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
 
   const { data: prospects, error: fetchError } = await adminSupabase
     .from("prospects")
-    .select("id, email, name")
+    .select("id, email, name, company_name, city, loan_category")
     .in("id", prospectIds);
 
   if (fetchError) {
@@ -192,54 +200,50 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
     return { success: false, error: "No prospects found" };
   }
 
-  const TEMPLATES: Record<string, { subject: string; content: string }> = {
-    intro: {
-      subject: "Boost your loan business with LeadHub",
-      content: "Hello {{name}}, welcome to LeadHub..."
-    },
-    demo: {
-      subject: "See LeadHub in action - Interactive Demo",
-      content: "Hi {{name}}, check out our demo: {{demo_url}}"
-    },
-    trial: {
-      subject: "Last chance to start your free trial",
-      content: "Hi {{name}}, start your trial now: {{signup_url}}"
-    },
-    followup: {
-      subject: "Following up on your interest in LeadHub",
-      content: "Hi {{name}}, just following up..."
-    }
-  };
-
-  let template = TEMPLATES[campaignTemplate];
+  let template = getBuiltInCampaignTemplate(campaignTemplate);
+  let templateName = template?.name || campaignTemplate;
 
   // If not a hardcoded template, try fetching from database
   if (!template) {
     const { data: customTemplate } = await adminSupabase
       .from("campaign_templates")
-      .select("subject, content")
+      .select("id, name, subject, content")
       .eq("id", campaignTemplate)
       .maybeSingle();
     
     if (customTemplate) {
-      template = customTemplate;
+      template = {
+        id: customTemplate.id,
+        name: customTemplate.name,
+        subject: customTemplate.subject,
+        content: customTemplate.content,
+        description: "Custom admin template"
+      };
+      templateName = customTemplate.name;
     }
   }
 
   if (!template) {
-    template = TEMPLATES.intro;
+    template = getBuiltInCampaignTemplate("intro")!;
+    templateName = template.name;
   }
+
+  const brochure = await getCampaignBrochureAttachment();
 
   let successCount = 0;
   let failedCount = 0;
 
   for (const prospect of prospects) {
     const { demoUrl, signupUrl } = buildCampaignLinks(prospect.id);
-    const htmlContent = template.content
-      .replace(/\{\{name\}\}/g, prospect.name || "there")
-      .replace(/\{\{id\}\}/g, prospect.id)
-      .replace(/\{\{demo_url\}\}/g, demoUrl)
-      .replace(/\{\{signup_url\}\}/g, signupUrl);
+    const renderContext = createCampaignRenderContext({
+      prospect,
+      demoUrl,
+      signupUrl,
+      senderName,
+      senderPhone,
+      senderEmail: senderContactEmail
+    });
+    const rendered = renderCampaignTemplate(template, renderContext);
 
     const { data: campaignRow, error: createCampaignError } = await adminSupabase
       .from("email_campaigns")
@@ -250,7 +254,10 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
         provider: "brevo",
         provider_response: {
           to: prospect.email,
-          subject: template.subject
+          template_id: campaignTemplate,
+          template_name: templateName,
+          subject: rendered.subject,
+          attachment: brochure.metadata
         }
       })
       .select("id")
@@ -273,8 +280,9 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
         body: JSON.stringify({
           sender: { name: senderName, email: senderEmail },
           to: [{ email: prospect.email, name: prospect.name }],
-          subject: template.subject,
-          htmlContent,
+          subject: rendered.subject,
+          htmlContent: rendered.htmlContent,
+          ...(brochure.attachments.length ? { attachment: brochure.attachments } : {}),
           tags: ["campaign", campaignTemplate],
           headers: {
             "X-Mailin-Tag": campaignTemplate
@@ -289,7 +297,13 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
         const { error: campaignError } = await adminSupabase.from("email_campaigns").update({
           email_sent_at: new Date().toISOString(),
           message_id: messageId,
-          provider_response: result,
+          provider_response: {
+            ...result,
+            template_id: campaignTemplate,
+            template_name: templateName,
+            subject: rendered.subject,
+            attachment: brochure.metadata
+          },
           status: "sent"
         }).eq("id", campaignRow.id);
 

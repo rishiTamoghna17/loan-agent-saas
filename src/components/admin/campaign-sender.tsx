@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Mail, Loader2, CheckCircle2, AlertCircle, Plus, Trash2, Save } from "lucide-react";
+import { Mail, Loader2, CheckCircle2, AlertCircle, Plus, Trash2, Save, Paperclip } from "lucide-react";
 import { sendCampaignEmail, saveCampaignTemplate, deleteCampaignTemplate } from "@/app/admin/actions";
 import { useRouter } from "next/navigation";
+import {
+  BUILT_IN_CAMPAIGN_TEMPLATES,
+  CAMPAIGN_VARIABLES,
+  createPreviewCampaignContext,
+  renderCampaignTemplate
+} from "@/lib/campaign-templates";
 
-const DEFAULT_TEMPLATES = [
-  { id: "intro", name: "Introduction", subject: "Boost your loan business with LeadHub" },
-  { id: "demo", name: "Demo Invitation", subject: "See LeadHub in action - Interactive Demo" },
-  { id: "trial", name: "Trial Reminder", subject: "Last chance to start your free trial" },
-  { id: "followup", name: "Follow-up", subject: "Following up on your interest in LeadHub" },
-];
+const DEFAULT_TEMPLATE_IDS = BUILT_IN_CAMPAIGN_TEMPLATES.map((template) => template.id);
 
 export function CampaignSender({ 
   selectedProspects,
@@ -21,7 +22,7 @@ export function CampaignSender({
 }) {
   const router = useRouter();
   const [isSending, setIsSending] = useState(false);
-  const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATES[0].id);
+  const [templateId, setTemplateId] = useState(BUILT_IN_CAMPAIGN_TEMPLATES[0].id);
   const [result, setResult] = useState<{ success: boolean; count?: number; failedCount?: number; error?: string } | null>(null);
   
   // Clear result when selection changes
@@ -34,8 +35,9 @@ export function CampaignSender({
   const [builderData, setBuilderData] = useState({ name: "", subject: "", content: "" });
   const [isSaving, setIsSaving] = useState(false);
 
-  const allTemplates = [...DEFAULT_TEMPLATES, ...customTemplates];
-  const selectedTemplate = allTemplates.find(t => t.id === templateId) || DEFAULT_TEMPLATES[0];
+  const allTemplates = [...BUILT_IN_CAMPAIGN_TEMPLATES, ...customTemplates];
+  const selectedTemplate = allTemplates.find(t => t.id === templateId) || BUILT_IN_CAMPAIGN_TEMPLATES[0];
+  const renderedPreview = renderCampaignTemplate(selectedTemplate, createPreviewCampaignContext());
 
   const handleSend = async () => {
     if (selectedProspects.length === 0) return;
@@ -75,7 +77,7 @@ export function CampaignSender({
     
     try {
       await deleteCampaignTemplate(id);
-      if (templateId === id) setTemplateId(DEFAULT_TEMPLATES[0].id);
+      if (templateId === id) setTemplateId(BUILT_IN_CAMPAIGN_TEMPLATES[0].id);
       router.refresh();
     } catch (error) {
       console.error("Failed to delete template", error);
@@ -120,7 +122,7 @@ export function CampaignSender({
           <div>
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-slate-600">Email Content</label>
-              <span className="text-[10px] text-slate-400">Use {"{{name}}"} for personalization</span>
+              <span className="text-[10px] text-slate-400">Use variables below for personalization</span>
             </div>
             <textarea
               value={builderData.content}
@@ -138,6 +140,16 @@ export function CampaignSender({
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Template
           </button>
+          <div className="rounded-md bg-white p-3 text-[11px] text-slate-500">
+            <p className="mb-2 font-semibold text-slate-700">Available variables</p>
+            <div className="flex flex-wrap gap-1.5">
+              {CAMPAIGN_VARIABLES.map((variable) => (
+                <code key={variable} className="rounded bg-slate-100 px-1.5 py-1 text-slate-600">
+                  {variable}
+                </code>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -162,8 +174,11 @@ export function CampaignSender({
                     {t.name}
                   </span>
                   <span className="mt-1 text-[10px] text-slate-500 line-clamp-1">{t.subject}</span>
+                  {"description" in t && t.description ? (
+                    <span className="mt-2 text-[10px] leading-4 text-slate-400 line-clamp-2">{t.description}</span>
+                  ) : null}
                   
-                  {t.id !== "intro" && t.id !== "demo" && t.id !== "trial" && t.id !== "followup" && (
+                  {!DEFAULT_TEMPLATE_IDS.includes(t.id) && (
                     <button
                       onClick={(e) => handleDeleteTemplate(t.id, e)}
                       className="absolute right-2 top-2 hidden rounded-md p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 group-hover:block"
@@ -172,6 +187,34 @@ export function CampaignSender({
                     </button>
                   )}
                 </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
+                <p className="mt-1 text-sm font-bold text-ink">{renderedPreview.subject}</p>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                <Paperclip className="h-3 w-3" />
+                Brochure attached
+              </div>
+            </div>
+            <div
+              className="max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600"
+              dangerouslySetInnerHTML={{ __html: renderedPreview.htmlContent }}
+            />
+          </div>
+
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-slate-600">
+            <p className="font-semibold text-brand-blue">Available variables</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {CAMPAIGN_VARIABLES.map((variable) => (
+                <code key={variable} className="rounded bg-white px-1.5 py-1 text-slate-600">
+                  {variable}
+                </code>
               ))}
             </div>
           </div>

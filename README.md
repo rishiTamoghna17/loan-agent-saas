@@ -203,7 +203,13 @@ BREVO_API_KEY=
 BREVO_WEBHOOK_SECRET=
 CAMPAIGN_BASE_URL=https://leadhub-loan-crm.vercel.app
 BREVO_TEST_EMAIL=
+CAMPAIGN_SENDER_PHONE=7001586476
+CAMPAIGN_SENDER_CONTACT_EMAIL=tamoghna171099@gmail.com
+CAMPAIGN_BROCHURE_PATH=artifacts/LeadHub-Loan-Agent-Sales-Brochure.pdf
+CAMPAIGN_ATTACH_BROCHURE=true
 ```
+
+`CAMPAIGN_BASE_URL` is the only source used by campaign templates for demo and signup links. Changing it changes email links without requiring a Vercel domain or alias change. Campaign emails use the built-in LeadHub templates by default and attach the loan-agent sales brochure when `CAMPAIGN_ATTACH_BROCHURE` is not `false`.
 
 Add this webhook in Brevo Transactional webhooks:
 
@@ -212,6 +218,14 @@ https://leadhub-loan-crm.vercel.app/api/webhooks/brevo?secret=BREVO_WEBHOOK_SECR
 ```
 
 Enable delivered, opened, clicked, hard bounce, soft bounce, blocked, and spam events. Campaign emails store a row in `email_campaigns` before the provider call, then update to `sent` or `failed`; webhook events update delivered/opened/clicked/bounced timestamps and lead score.
+
+Useful checks:
+
+```bash
+npm run test:campaign-templates
+npm run test:brevo-send
+npm run test:brevo-webhook
+```
 
 You can also configure Supabase Auth SMTP through the Management API:
 

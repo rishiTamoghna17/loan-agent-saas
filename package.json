@@ -12,6 +12,7 @@
     "configure:smtp": "node scripts/configure-supabase-smtp.mjs",
     "test:auth-errors": "node scripts/test-auth-errors.mjs",
     "test:auth-email": "node scripts/test-auth-email.mjs",
+    "test:campaign-templates": "node scripts/test-campaign-templates.mjs",
     "test:brevo-send": "node scripts/test-brevo-send.mjs",
     "test:brevo-webhook": "node scripts/test-brevo-webhook.mjs",
     "test:db": "node scripts/test-supabase-db.mjs",

@@ -25,6 +25,9 @@ test("admin campaigns page renders for configured admin credentials", async ({ p
   await page.goto("/admin/campaigns");
   await expect(page.getByRole("heading", { name: /Email Campaigns/i })).toBeVisible();
   await expect(page.getByText(/Active campaign links/i)).toBeVisible();
+  await expect(page.getByText(/Available variables/i)).toBeVisible();
+  await expect(page.getByText(/Brochure attached/i)).toBeVisible();
+  await expect(page.getByText(/Grow your loan business with LeadHub/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /Send .* Email/i })).toBeDisabled();
 });
 
@@ -42,4 +45,3 @@ test("brevo webhook rejects requests without the configured secret", async ({ re
     expect([200, 500]).toContain(response.status());
   }
 });
-
