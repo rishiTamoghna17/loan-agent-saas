@@ -430,7 +430,7 @@ export function CampaignSender({
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
-                  <p className="mt-1 text-sm font-bold text-ink">{renderedPreview.subject}</p>
+                  <p className="mt-1 text-sm font-bold text-ink">{renderedPreview?.subject || ""}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {(selectedTemplate.brochure_attached || false) && (
@@ -507,7 +507,7 @@ export function CampaignSender({
               {/* Render small preview */}
               <div
                 className="max-h-40 overflow-y-auto rounded-md border border-slate-200 bg-white p-2"
-                dangerouslySetInnerHTML={{ __html: renderedPreview.htmlContent }}
+                dangerouslySetInnerHTML={{ __html: renderedPreview?.htmlContent || "" }}
               />
             </div>
           )}
@@ -519,7 +519,7 @@ export function CampaignSender({
                 <div className="flex items-center justify-between p-4 border-b border-slate-200">
                   <div>
                     <h3 className="text-lg font-semibold text-ink">Email Preview</h3>
-                    <p className="text-sm text-slate-500">{renderedPreview.subject}</p>
+                    <p className="text-sm text-slate-500">{renderedPreview?.subject || ""}</p>
                   </div>
                   <button
                     onClick={() => setShowPreviewModal(false)}
@@ -531,7 +531,7 @@ export function CampaignSender({
                 <div className="overflow-y-auto flex-1 bg-slate-50">
                   <div
                     className="p-4"
-                    dangerouslySetInnerHTML={{ __html: renderedPreview.htmlContent }}
+                    dangerouslySetInnerHTML={{ __html: renderedPreview?.htmlContent || "" }}
                   />
                 </div>
                 <div className="p-4 border-t border-slate-200 flex justify-between items-center">
