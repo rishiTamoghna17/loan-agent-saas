@@ -19,6 +19,52 @@ export default async function AdminDashboardPage() {
   const campaignBaseUrl = getCampaignBaseUrl();
   const webhookConfigured = Boolean(process.env.BREVO_WEBHOOK_SECRET);
 
+  // Fetch recent prospects
+  const { data: prospects } = await supabase
+    .from("prospects")
+    .select("id, name, company_name")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  // Fetch recent activity (opens/clicks/replies)
+  const { data: recentActivityRaw } = await supabase
+    .from("email_campaigns")
+    .select("id, prospect_id, template_name, opened_at, clicked_at, replied_at, created_at, prospects(name)")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  // Transform recent activity
+  const recentActivity = recentActivityRaw?.map((campaign: any) => {
+    let type = null;
+    let date = campaign.created_at;
+    
+    if (campaign.replied_at) {
+      type = 'replied';
+      date = campaign.replied_at;
+    } else if (campaign.clicked_at) {
+      type = 'clicked';
+      date = campaign.clicked_at;
+    } else if (campaign.opened_at) {
+      type = 'opened';
+      date = campaign.opened_at;
+    }
+    
+    if (type) {
+      // Handle case where prospects is an array (Supabase returns array for embedded relationships)
+      const prospect = Array.isArray(campaign.prospects) ? campaign.prospects[0] : campaign.prospects;
+      
+      return {
+        id: campaign.id,
+        type,
+        date,
+        prospect_id: campaign.prospect_id,
+        prospect_name: prospect?.name || 'Unknown Prospect',
+        template_name: campaign.template_name || 'Unknown Template'
+      };
+    }
+    return null;
+  }).filter(Boolean) || [];
+
   const { count: totalProspects } = await supabase
     .from("prospects")
     .select("*", { count: "exact", head: true });
@@ -142,24 +188,74 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-2">
+      <div className="mt-12 grid gap-8 lg:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-ink">Recent Prospects</h2>
-          <p className="text-sm text-slate-500">Go to Prospects page to see full list and import new ones.</p>
+          {prospects && prospects.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {prospects.slice(0,5).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">{p.name}</p>
+                    <p className="text-xs text-slate-500">{p.company_name}</p>
+                  </div>
+                  <a
+                    href={`/admin/prospects/${p.id}`}
+                    className="text-xs font-medium text-brand-blue hover:underline"
+                  >
+                    View
+                  </a>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No recent prospects found.</p>
+          )}
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+          <h2 className="mb-4 text-lg font-semibold text-ink">Recent Activity (Opens & Clicks)</h2>
+          {recentActivity?.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {recentActivity.map((activity: any) => (
+                <div key={activity.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-full p-2 ${activity.type === 'opened' ? 'bg-yellow-100 text-yellow-700' : activity.type === 'clicked' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                      {activity.type === 'opened' ? <Zap className="h-4 w-4" /> : activity.type === 'clicked' ? <MousePointer2 className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{activity.prospect_name}</p>
+                      <p className="text-xs text-slate-500">{activity.template_name} • {new Date(activity.date).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <a
+                    href={`/admin/prospects/${activity.prospect_id}`}
+                    className="text-xs font-medium text-brand-blue hover:underline"
+                  >
+                    View Prospect
+                  </a>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No recent activity recorded.</p>
+          )}
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-ink">Recent Campaign Failures</h2>
           {failedCampaigns?.length ? (
             <div className="flex flex-col gap-3">
-              {failedCampaigns.map((campaign: any) => (
-                <div key={campaign.id} className="rounded-lg border border-rose-100 bg-rose-50 p-3 text-sm">
-                  <p className="font-semibold text-ink">{campaign.prospects?.name || campaign.prospects?.company_name || "Prospect"}</p>
-                  <p className="text-xs text-slate-600">{campaign.prospects?.email}</p>
-                  <p className="mt-2 text-xs text-rose-700">
-                    {campaign.provider_error?.message || campaign.provider_error?.error || "Brevo request failed"}
-                  </p>
-                </div>
-              ))}
+              {failedCampaigns.map((campaign: any) => {
+                const prospect = Array.isArray(campaign.prospects) ? campaign.prospects[0] : campaign.prospects;
+                return (
+                  <div key={campaign.id} className="rounded-lg border border-rose-100 bg-rose-50 p-3 text-sm">
+                    <p className="font-semibold text-ink">{prospect?.name || prospect?.company_name || "Prospect"}</p>
+                    <p className="text-xs text-slate-600">{prospect?.email}</p>
+                    <p className="mt-2 text-xs text-rose-700">
+                      {campaign.provider_error?.message || campaign.provider_error?.error || "Brevo request failed"}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-slate-500">No failed campaign sends recorded.</p>

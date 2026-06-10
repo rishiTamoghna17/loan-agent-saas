@@ -26,9 +26,55 @@ test("admin campaigns page renders for configured admin credentials", async ({ p
   await expect(page.getByRole("heading", { name: /Email Campaigns/i })).toBeVisible();
   await expect(page.getByText(/Active campaign links/i)).toBeVisible();
   await expect(page.getByText(/Available variables/i)).toBeVisible();
-  await expect(page.getByText(/Brochure attached/i)).toBeVisible();
   await expect(page.getByText(/Grow your loan business with LeadHub/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /Send .* Email/i })).toBeDisabled();
+});
+
+test("admin prospects page renders", async ({ page }) => {
+  const email = process.env.E2E_ADMIN_EMAIL;
+  const password = process.env.E2E_ADMIN_PASSWORD;
+  test.skip(!email || !password, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to run authenticated admin UI checks.");
+
+  await page.goto("/login");
+  await page.getByLabel(/email/i).fill(email!);
+  await page.getByLabel(/password/i).fill(password!);
+  await page.getByRole("button", { name: /log in/i }).click();
+  await expect(page).toHaveURL(/\/dashboard|\/admin/);
+
+  await page.goto("/admin/prospects");
+  await expect(page.getByRole("heading", { name: /Prospects/i })).toBeVisible();
+  await expect(page.getByText(/Manage and track your potential customers/i)).toBeVisible();
+});
+
+test("can create custom campaign template", async ({ page }) => {
+  const email = process.env.E2E_ADMIN_EMAIL;
+  const password = process.env.E2E_ADMIN_PASSWORD;
+  test.skip(!email || !password, "Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to run authenticated admin UI checks.");
+
+  await page.goto("/login");
+  await page.getByLabel(/email/i).fill(email!);
+  await page.getByLabel(/password/i).fill(password!);
+  await page.getByRole("button", { name: /log in/i }).click();
+  await expect(page).toHaveURL(/\/dashboard|\/admin/);
+
+  await page.goto("/admin/campaigns");
+  
+  // Open template builder
+  await page.getByText(/Create Template/i).click();
+  
+  // Fill out template
+  await page.getByLabel(/Template Name/i).fill("Test Campaign");
+  await page.getByLabel(/Email Subject/i).fill("Test Subject");
+  await page.getByLabel(/Email Content/i).fill("Hello {{name}}, this is a test email.");
+  
+  // Check brochure toggle
+  await page.getByLabel(/Brochure Attached/i).check();
+  
+  // Save
+  await page.getByRole("button", { name: /Save Template/i }).click();
+  
+  // Verify it's visible
+  await expect(page.getByText(/Test Campaign/i)).toBeVisible();
 });
 
 test("brevo webhook rejects requests without the configured secret", async ({ request }) => {

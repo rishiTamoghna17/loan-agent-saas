@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Mail, Loader2, CheckCircle2, AlertCircle, Plus, Trash2, Save, Paperclip } from "lucide-react";
+import { Mail, Loader2, CheckCircle2, AlertCircle, Plus, Trash2, Save, Paperclip, Upload, X, Edit2 } from "lucide-react";
 import { sendCampaignEmail, saveCampaignTemplate, deleteCampaignTemplate } from "@/app/admin/actions";
 import { useRouter } from "next/navigation";
 import {
@@ -13,6 +13,27 @@ import {
 
 const DEFAULT_TEMPLATE_IDS = BUILT_IN_CAMPAIGN_TEMPLATES.map((template) => template.id);
 
+interface BuilderState {
+  name: string;
+  subject: string;
+  content: string;
+  brochure_attached: boolean;
+  pdf_urls: string[];
+  pdfFiles: File[];
+  id?: string;
+}
+
+// Helper to extract filename from URL
+const getFilenameFromUrl = (url: string) => {
+  try {
+    const pathname = new URL(url).pathname;
+    const parts = pathname.split("/");
+    return parts[parts.length - 1] || "document.pdf";
+  } catch {
+    return "document.pdf";
+  }
+};
+
 export function CampaignSender({ 
   selectedProspects,
   customTemplates = []
@@ -21,8 +42,11 @@ export function CampaignSender({
   customTemplates?: any[];
 }) {
   const router = useRouter();
+  
+  const allTemplates = customTemplates;
+  
   const [isSending, setIsSending] = useState(false);
-  const [templateId, setTemplateId] = useState(BUILT_IN_CAMPAIGN_TEMPLATES[0].id);
+  const [templateId, setTemplateId] = useState(allTemplates[0]?.id || 'intro');
   const [result, setResult] = useState<{ success: boolean; count?: number; failedCount?: number; error?: string } | null>(null);
   
   // Clear result when selection changes
@@ -32,11 +56,19 @@ export function CampaignSender({
   
   // Builder state
   const [isBuilding, setIsBuilding] = useState(false);
-  const [builderData, setBuilderData] = useState({ name: "", subject: "", content: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [builderData, setBuilderData] = useState<BuilderState>({ 
+    name: "", 
+    subject: "", 
+    content: "", 
+    brochure_attached: false, 
+    pdf_urls: [], 
+    pdfFiles: [] 
+  });
   const [isSaving, setIsSaving] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  const allTemplates = [...BUILT_IN_CAMPAIGN_TEMPLATES, ...customTemplates];
-  const selectedTemplate = allTemplates.find(t => t.id === templateId) || BUILT_IN_CAMPAIGN_TEMPLATES[0];
+  const selectedTemplate = allTemplates.find(t => t.id === templateId) || allTemplates[0] || {};
   const renderedPreview = renderCampaignTemplate(selectedTemplate, createPreviewCampaignContext());
 
   const handleSend = async () => {
@@ -55,17 +87,71 @@ export function CampaignSender({
     }
   };
 
+  const startEdit = (template: any) => {
+    setEditingId(template.id);
+    setBuilderData({
+      name: template.name,
+      subject: template.subject,
+      content: template.content,
+      brochure_attached: template.brochure_attached || false,
+      pdf_urls: template.pdf_urls || [],
+      pdfFiles: [],
+      id: template.id
+    });
+    setIsBuilding(true);
+  };
+
+  const cancelEdit = () => {
+    setIsBuilding(false);
+    setEditingId(null);
+    setBuilderData({ 
+      name: "", 
+      subject: "", 
+      content: "", 
+      brochure_attached: false, 
+      pdf_urls: [], 
+      pdfFiles: [] 
+    });
+  };
+
   const handleSaveTemplate = async () => {
     if (!builderData.name || !builderData.subject || !builderData.content) return;
     
     setIsSaving(true);
     try {
-      await saveCampaignTemplate(builderData);
-      setIsBuilding(false);
-      setBuilderData({ name: "", subject: "", content: "" });
+      let finalPdfUrls = [...builderData.pdf_urls];
+      
+      // Upload new files
+      if (builderData.pdfFiles.length > 0) {
+        for (const file of builderData.pdfFiles) {
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await fetch('/api/upload-pdf', {
+            method: 'POST',
+            body: formData
+          });
+          if (!response.ok) {
+            throw new Error('Failed to upload PDF: ' + file.name);
+          }
+          const result = await response.json();
+          finalPdfUrls.push(result.url);
+        }
+      }
+
+      await saveCampaignTemplate({
+        id: builderData.id,
+        name: builderData.name,
+        subject: builderData.subject,
+        content: builderData.content,
+        brochure_attached: builderData.brochure_attached,
+        pdf_urls: finalPdfUrls
+      });
+      
+      cancelEdit();
       router.refresh();
     } catch (error) {
       console.error("Failed to save template", error);
+      alert("Failed to save template. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -84,12 +170,46 @@ export function CampaignSender({
     }
   };
 
+  const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles: File[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type !== "application/pdf") {
+          alert(`File "${file.name}" is not a PDF.`);
+          continue;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          alert(`File "${file.name}" exceeds 10MB.`);
+          continue;
+        }
+        newFiles.push(file);
+      }
+      setBuilderData(prev => ({ ...prev, pdfFiles: [...prev.pdfFiles, ...newFiles] }));
+    }
+  };
+
+  const removePdfFile = (index: number) => {
+    setBuilderData(prev => ({
+      ...prev,
+      pdfFiles: prev.pdfFiles.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removePdfUrl = (index: number) => {
+    setBuilderData(prev => ({
+      ...prev,
+      pdf_urls: prev.pdf_urls.filter((_, i) => i !== index)
+    }));
+  };
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-ink">Send Campaign</h2>
         <button
-          onClick={() => setIsBuilding(!isBuilding)}
+          onClick={isBuilding ? cancelEdit : () => { setIsBuilding(true); setEditingId(null); }}
           className="flex items-center gap-1.5 text-xs font-semibold text-brand-blue hover:underline"
         >
           {isBuilding ? "Cancel" : <><Plus className="h-3 w-3" /> Create Template</>}
@@ -98,7 +218,9 @@ export function CampaignSender({
 
       {isBuilding ? (
         <div className="space-y-4 rounded-lg border border-blue-100 bg-blue-50/50 p-4">
-          <h3 className="text-sm font-bold text-brand-blue">Custom Template Builder</h3>
+          <h3 className="text-sm font-bold text-brand-blue">
+            {editingId ? "Edit Template" : "Custom Template Builder"}
+          </h3>
           <div>
             <label className="text-xs font-medium text-slate-600">Template Name</label>
             <input
@@ -132,6 +254,67 @@ export function CampaignSender({
               placeholder="Hi {{name}}, we have a special offer for you..."
             />
           </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="brochure-toggle-builder"
+              checked={builderData.brochure_attached}
+              onChange={(e) => setBuilderData({ ...builderData, brochure_attached: e.target.checked })}
+              className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+            />
+            <label htmlFor="brochure-toggle-builder" className="text-xs font-medium text-slate-700">
+              Brochure Attached
+            </label>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-600 mb-1 block">PDF Attachments (optional)</label>
+            <div className="space-y-2 mb-2">
+              {builderData.pdf_urls.map((url, index) => (
+                <div key={`url-${index}`} className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-md">
+                  <Paperclip className="h-4 w-4 text-brand-blue" />
+                  <span className="text-xs text-slate-700 flex-1 truncate">
+                    {getFilenameFromUrl(url)}
+                  </span>
+                  <button
+                    onClick={() => removePdfUrl(index)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {builderData.pdfFiles.map((file, index) => (
+                <div key={`file-${index}`} className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-md">
+                  <Paperclip className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-700 flex-1 truncate">{file.name}</span>
+                  <button
+                    onClick={() => removePdfFile(index)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+              <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                <Upload className="h-6 w-6 mb-1 text-slate-400" />
+                <p className="text-[10px] text-slate-500"><span className="font-semibold">Add PDF</span> or drag and drop</p>
+                <p className="text-[9px] text-slate-400">PDF only (max 10MB)</p>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                accept="application/pdf"
+                multiple
+                onChange={handlePdfFileChange}
+              />
+            </label>
+          </div>
+
           <button
             onClick={handleSaveTemplate}
             disabled={isSaving || !builderData.name || !builderData.subject || !builderData.content}
@@ -140,6 +323,7 @@ export function CampaignSender({
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Template
           </button>
+          
           <div className="rounded-md bg-white p-3 text-[11px] text-slate-500">
             <p className="mb-2 font-semibold text-slate-700">Available variables</p>
             <div className="flex flex-wrap gap-1.5">
@@ -161,10 +345,10 @@ export function CampaignSender({
             <label className="text-sm font-medium text-slate-700">Choose Template</label>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               {allTemplates.map((t) => (
-                <button
+                <div
                   key={t.id}
                   onClick={() => setTemplateId(t.id)}
-                  className={`group relative flex flex-col rounded-lg border p-4 text-left transition-all ${
+                  className={`group relative flex flex-col rounded-lg border p-4 text-left transition-all cursor-pointer ${
                     templateId === t.id 
                       ? "border-brand-blue bg-blue-50 ring-1 ring-brand-blue" 
                       : "border-slate-200 bg-white hover:border-slate-300"
@@ -178,15 +362,23 @@ export function CampaignSender({
                     <span className="mt-2 text-[10px] leading-4 text-slate-400 line-clamp-2">{t.description}</span>
                   ) : null}
                   
-                  {!DEFAULT_TEMPLATE_IDS.includes(t.id) && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startEdit(t); }}
+                      className="p-1 text-slate-400 hover:text-brand-blue"
+                      title="Edit template"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </button>
                     <button
                       onClick={(e) => handleDeleteTemplate(t.id, e)}
-                      className="absolute right-2 top-2 hidden rounded-md p-1 text-slate-300 hover:bg-red-50 hover:text-red-500 group-hover:block"
+                      className="p-1 text-slate-400 hover:text-red-500"
+                      title="Delete template"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
-                  )}
-                </button>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -197,16 +389,112 @@ export function CampaignSender({
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
                 <p className="mt-1 text-sm font-bold text-ink">{renderedPreview.subject}</p>
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                <Paperclip className="h-3 w-3" />
-                Brochure attached
+              <div className="flex items-center gap-2">
+                {(selectedTemplate.brochure_attached || false) && (
+                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                    <Paperclip className="h-3 w-3" />
+                    {selectedTemplate.pdf_urls?.length && selectedTemplate.pdf_urls.length > 0
+                      ? `${selectedTemplate.pdf_urls.length} document(s)` 
+                      : "Brochure attached"}
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowPreviewModal(true)}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-700 rounded-md border border-slate-300 bg-white hover:bg-slate-100"
+                >
+                  Full Preview
+                </button>
               </div>
             </div>
+
+            <div className="mb-3 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="brochure-toggle-preview"
+                checked={selectedTemplate.brochure_attached || false}
+                onChange={async (e) => {
+                    try {
+                      await saveCampaignTemplate({
+                        id: selectedTemplate.id,
+                        name: selectedTemplate.name,
+                        subject: selectedTemplate.subject,
+                        content: selectedTemplate.content,
+                        brochure_attached: e.target.checked,
+                        pdf_urls: selectedTemplate.pdf_urls
+                      });
+                      router.refresh();
+                    } catch (error) {
+                      console.error("Failed to update brochure toggle", error);
+                    }
+                  }}
+                className="rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+              />
+              <label htmlFor="brochure-toggle-preview" className="text-xs font-medium text-slate-700">
+                Brochure Attached
+              </label>
+            </div>
+
+            {/* Show attached document names */}
+            {selectedTemplate.pdf_urls?.length > 0 && (
+              <div className="mb-3 space-y-1">
+                <p className="text-xs font-semibold text-slate-600">Attached Documents:</p>
+                {selectedTemplate.pdf_urls.map((url: string, idx: number) => (
+                  <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <Paperclip className="h-3 w-3" />
+                    <span className="truncate">{getFilenameFromUrl(url)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Render small preview */}
             <div
-              className="max-h-72 overflow-y-auto rounded-md border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600"
+              className="max-h-40 overflow-y-auto rounded-md border border-slate-200 bg-white p-2"
               dangerouslySetInnerHTML={{ __html: renderedPreview.htmlContent }}
             />
           </div>
+
+          {/* Full Preview Modal */}
+          {showPreviewModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                  <div>
+                    <h3 className="text-lg font-semibold text-ink">Email Preview</h3>
+                    <p className="text-sm text-slate-500">{renderedPreview.subject}</p>
+                  </div>
+                  <button
+                    onClick={() => setShowPreviewModal(false)}
+                    className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="overflow-y-auto flex-1 bg-slate-50">
+                  <div
+                    className="p-4"
+                    dangerouslySetInnerHTML={{ __html: renderedPreview.htmlContent }}
+                  />
+                </div>
+                <div className="p-4 border-t border-slate-200 flex justify-between items-center">
+                  {(selectedTemplate.brochure_attached || false) && (
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Paperclip className="h-4 w-4" />
+                      {selectedTemplate.pdf_urls?.length && selectedTemplate.pdf_urls.length > 0
+                        ? `${selectedTemplate.pdf_urls.length} document(s) attached` 
+                        : "Brochure attached"}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setShowPreviewModal(false)}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue rounded-md hover:bg-brand-blue/90"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-slate-600">
             <p className="font-semibold text-brand-blue">Available variables</p>

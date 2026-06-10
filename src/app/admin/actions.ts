@@ -78,25 +78,75 @@ export async function getCampaignTemplates() {
       console.error("Error fetching campaign templates:", error);
       return [];
     }
-    return data || [];
+    // Add default values for missing columns if migration not applied yet
+    return (data || []).map(t => ({
+      ...t,
+      brochure_attached: t.brochure_attached ?? false,
+      pdf_url: t.pdf_url ?? null,
+      pdf_urls: t.pdf_urls ?? (t.pdf_url ? [t.pdf_url] : [])
+    }));
   } catch (error) {
     console.error("Unexpected error in getCampaignTemplates:", error);
     return [];
   }
 }
 
-export async function saveCampaignTemplate(template: { name: string; subject: string; content: string; id?: string }) {
+export async function saveCampaignTemplate(template: { 
+  name: string; 
+  subject: string; 
+  content: string; 
+  id?: string; 
+  brochure_attached?: boolean; 
+  pdf_url?: string | null;
+  pdf_urls?: string[] | null;
+}) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
 
-  const { data, error } = await supabase
-    .from("campaign_templates")
-    .upsert([template])
-    .select()
-    .single();
+  // Prepare safe template object with only core fields if new columns don't exist
+  const coreTemplate: any = { 
+    name: template.name, 
+    subject: template.subject, 
+    content: template.content 
+  };
+  if (template.id) {
+    coreTemplate.id = template.id;
+  }
+  
+  try {
+    const upsertData: any = {
+      ...coreTemplate,
+      brochure_attached: template.brochure_attached ?? false,
+      pdf_url: template.pdf_url ?? (template.pdf_urls && template.pdf_urls.length > 0 ? template.pdf_urls[0] : null),
+      pdf_urls: template.pdf_urls ?? (template.pdf_url ? [template.pdf_url] : [])
+    };
 
-  if (error) throw error;
-  return { success: true, data };
+    const { data, error } = await supabase
+      .from("campaign_templates")
+      .upsert([upsertData])
+      .select()
+      .single();
+
+    if (error) {
+      // If error mentions missing columns, try again with just core fields
+      if (error.message.includes("brochure_attached") || error.message.includes("pdf_url") || error.message.includes("pdf_urls")) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("campaign_templates")
+          .upsert([coreTemplate])
+          .select()
+          .single();
+
+        if (fallbackError) throw fallbackError;
+        return { success: true, data: fallbackData };
+      }
+      throw error;
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error saving template:", error);
+    throw error;
+  }
 }
 
 export async function deleteCampaignTemplate(id: string) {
@@ -117,6 +167,8 @@ export async function getProspects(options: {
   status?: string;
   city?: string;
   query?: string;
+  disablePagination?: boolean;
+  engagement?: 'opened' | 'clicked' | 'replied' | 'any';
 }) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
@@ -126,30 +178,119 @@ export async function getProspects(options: {
     pageSize = 20, 
     status, 
     city, 
-    query 
+    query,
+    disablePagination = false,
+    engagement
   } = options;
 
+  // First check if deleted_at column exists (gracefully handle missing migration)
   let dbQuery = supabase
     .from("prospects")
     .select("*", { count: "exact" })
-    .order("created_at", { ascending: false });
+    .order("lead_score", { ascending: false });
+
+  try {
+    const { error } = await supabase
+      .from("prospects")
+      .select("deleted_at")
+      .limit(1);
+    
+    if (!error) {
+      dbQuery = dbQuery.is("deleted_at", null);
+    }
+  } catch (err) {
+    // Ignore error - column doesn't exist yet
+  }
 
   if (status) dbQuery = dbQuery.eq("status", status);
   if (city) dbQuery = dbQuery.eq("city", city);
   if (query) dbQuery = dbQuery.or(`name.ilike.%${query}%,email.ilike.%${query}%,company_name.ilike.%${query}%`);
+  
+  // Apply engagement filter
+  let engagedProspectIds: string[] | null = null;
+  if (engagement) {
+    let emailCampaignQuery = supabase
+      .from("email_campaigns")
+      .select("prospect_id");
+    
+    if (engagement === 'opened') {
+      emailCampaignQuery = emailCampaignQuery.not("opened_at", "is", null);
+    } else if (engagement === 'clicked') {
+      emailCampaignQuery = emailCampaignQuery.not("clicked_at", "is", null);
+    } else if (engagement === 'replied') {
+      emailCampaignQuery = emailCampaignQuery.not("replied_at", "is", null);
+    } else if (engagement === 'any') {
+      emailCampaignQuery = emailCampaignQuery.or("opened_at.not.is.null,clicked_at.not.is.null,replied_at.not.is.null");
+    }
 
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+    const { data: campaignData, error: campaignError } = await emailCampaignQuery;
+    if (campaignError) {
+      console.error("Error fetching engaged prospect ids:", campaignError);
+      return {
+        prospects: [],
+        count: 0,
+        totalPages: 0,
+        currentPage: page,
+        pageSize
+      };
+    }
 
-  const { data, count, error } = await dbQuery.range(from, to);
+    engagedProspectIds = [...new Set(campaignData?.map(x => x.prospect_id) || [])];
+    
+    if (engagedProspectIds.length === 0) {
+      // No engaged prospects, return empty array
+      return {
+        prospects: [],
+        count: 0,
+        totalPages: 0,
+        currentPage: page,
+        pageSize
+      };
+    }
+
+    dbQuery = dbQuery.in("id", engagedProspectIds);
+  }
+
+  let data, count, error;
+  
+  if (disablePagination) {
+    ({ data, count, error } = await dbQuery);
+  } else {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    ({ data, count, error } = await dbQuery.range(from, to));
+  }
 
   if (error) {
     console.error("Error fetching prospects:", error);
     throw new Error(error.message);
   }
 
+  // Fetch email history for each prospect
+  const prospectsWithHistory = data ? await Promise.all(
+    data.map(async (prospect) => {
+      try {
+        const { data: history } = await supabase
+          .from("email_campaigns")
+          .select("template_name, status, created_at")
+          .eq("prospect_id", prospect.id)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        return {
+          ...prospect,
+          emailHistory: history || []
+        };
+      } catch (err) {
+        return {
+          ...prospect,
+          emailHistory: []
+        };
+      }
+    })
+  ) : [];
+
   return {
-    prospects: data || [],
+    prospects: prospectsWithHistory,
     count: count || 0,
     totalPages: count ? Math.ceil(count / pageSize) : 0,
     currentPage: page,
@@ -167,6 +308,38 @@ export async function updateProspectStatus(id: string, status: string) {
 
   if (error) throw error;
   revalidatePath("/admin/prospects");
+}
+
+export async function deleteProspect(id: string) {
+  await ensureAdmin();
+  const supabase = await getAdminSupabase();
+  
+  // Soft delete by setting deleted_at timestamp
+  const { data: prospect, error: fetchError } = await supabase
+    .from("prospects")
+    .select("*")
+    .eq("id", id)
+    .single();
+    
+  if (fetchError) throw fetchError;
+  
+  const { error: updateError } = await supabase
+    .from("prospects")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (updateError) throw updateError;
+  
+  // Log to audit table
+  await supabase.from("audit_logs").insert({
+    action: "delete",
+    table_name: "prospects",
+    record_id: id,
+    old_data: prospect
+  });
+
+  revalidatePath("/admin/prospects");
+  return { success: true };
 }
 
 export async function sendCampaignEmail(prospectIds: string[], campaignTemplate: string) {
@@ -202,12 +375,14 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
 
   let template = getBuiltInCampaignTemplate(campaignTemplate);
   let templateName = template?.name || campaignTemplate;
+  let brochureAttached = template?.brochure_attached || false;
+  let templatePdfUrls: string[] = [];
 
   // If not a hardcoded template, try fetching from database
   if (!template) {
     const { data: customTemplate } = await adminSupabase
       .from("campaign_templates")
-      .select("id, name, subject, content")
+      .select("id, name, subject, content, brochure_attached, pdf_url, pdf_urls")
       .eq("id", campaignTemplate)
       .maybeSingle();
     
@@ -217,18 +392,27 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
         name: customTemplate.name,
         subject: customTemplate.subject,
         content: customTemplate.content,
-        description: "Custom admin template"
+        description: "Custom admin template",
+        brochure_attached: customTemplate.brochure_attached,
+        pdf_url: customTemplate.pdf_url,
+        pdf_urls: customTemplate.pdf_urls
       };
       templateName = customTemplate.name;
+      brochureAttached = customTemplate.brochure_attached || false;
+      templatePdfUrls = customTemplate.pdf_urls || (customTemplate.pdf_url ? [customTemplate.pdf_url] : []);
     }
   }
 
   if (!template) {
     template = getBuiltInCampaignTemplate("intro")!;
     templateName = template.name;
+    brochureAttached = false;
   }
 
-  const brochure = await getCampaignBrochureAttachment();
+  let brochure = { attachments: [] as any[], metadata: { enabled: false, attached: false } };
+  if (brochureAttached) {
+    brochure = await getCampaignBrochureAttachment(templatePdfUrls);
+  }
 
   let successCount = 0;
   let failedCount = 0;
@@ -250,6 +434,8 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
       .insert({
         prospect_id: prospect.id,
         campaign_name: campaignTemplate,
+        template_id: campaignTemplate,
+        template_name: templateName,
         status: "sending",
         provider: "brevo",
         provider_response: {
@@ -363,4 +549,32 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
   }
 
   return { success: true, count: successCount, failedCount };
+}
+
+export async function getProspect(id: string) {
+  await ensureAdmin();
+  const supabase = await getAdminSupabase();
+  
+  const { data, error } = await supabase
+    .from("prospects")
+    .select("*")
+    .eq("id", id)
+    .single();
+    
+  if (error) throw error;
+  return data;
+}
+
+export async function getProspectEmailHistory(prospectId: string) {
+  await ensureAdmin();
+  const supabase = await getAdminSupabase();
+  
+  const { data, error } = await supabase
+    .from("email_campaigns")
+    .select("*")
+    .eq("prospect_id", prospectId)
+    .order("created_at", { ascending: false });
+    
+  if (error) throw error;
+  return data || [];
 }

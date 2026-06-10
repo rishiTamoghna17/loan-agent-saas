@@ -1,17 +1,12 @@
-import { getAdminSupabase } from "@/lib/admin-auth";
 import { getCampaignBaseUrl } from "@/lib/campaign-tracking";
-import { CampaignProspectTable } from "@/components/admin/campaign-prospect-table";
-import { getCampaignTemplates } from "@/app/admin/actions";
+import { CampaignsClientWrapper } from "@/components/admin/campaigns-client-wrapper";
+import { getCampaignTemplates, getProspects } from "@/app/admin/actions";
 
 export default async function CampaignsPage() {
-  const supabase = await getAdminSupabase();
   const campaignBaseUrl = getCampaignBaseUrl();
 
   const [prospectsResult, templates] = await Promise.all([
-    supabase
-      .from("prospects")
-      .select("*")
-      .order("lead_score", { ascending: false }),
+    getProspects({ disablePagination: true }),
     getCampaignTemplates()
   ]);
 
@@ -28,8 +23,8 @@ export default async function CampaignsPage() {
         <p className="mt-1 break-all text-slate-600">Signup: {campaignBaseUrl}/signup</p>
       </div>
 
-      <CampaignProspectTable 
-        prospects={prospectsResult.data || []} 
+      <CampaignsClientWrapper 
+        prospects={prospectsResult.prospects} 
         customTemplates={templates}
       />
     </div>

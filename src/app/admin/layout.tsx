@@ -11,6 +11,7 @@ import { logout } from "@/app/auth/actions";
 import { LeadHubMark } from "@/components/brand/lead-hub-mark";
 import { PendingButton } from "@/components/ui/pending-button";
 import { requireAdminUser } from "@/lib/admin-auth";
+import { NavLink } from "@/components/admin/nav-link";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdminUser({ redirectOnFailure: true });
@@ -29,26 +30,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           </div>
           <nav className="flex flex-wrap items-center gap-2">
-            <Link href="/admin" className="btn-secondary">
+            <NavLink href="/admin">
               <LayoutDashboard className="h-4 w-4" />
               Overview
-            </Link>
-            <Link href="/admin/prospects" className="btn-secondary">
+            </NavLink>
+            <NavLink href="/admin/prospects">
               <Users className="h-4 w-4" />
               Prospects
-            </Link>
-            <Link href="/admin/campaigns" className="btn-secondary">
+            </NavLink>
+            <NavLink href="/admin/campaigns">
               <Mail className="h-4 w-4" />
               Campaigns
-            </Link>
-            <Link href="/admin/analytics" className="btn-secondary">
+            </NavLink>
+            <NavLink href="/admin/analytics">
               <BarChart3 className="h-4 w-4" />
               Analytics
-            </Link>
-            <Link href="/admin/conversions" className="btn-secondary">
+            </NavLink>
+            <NavLink href="/admin/conversions">
               <TrendingUp className="h-4 w-4" />
               Conversions
-            </Link>
+            </NavLink>
             <form action={logout}>
               <PendingButton className="btn-secondary" pendingText="Logging out...">
                 <LogOut className="h-4 w-4" />

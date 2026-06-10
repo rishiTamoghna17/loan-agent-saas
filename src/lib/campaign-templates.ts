@@ -3,7 +3,10 @@ export type CampaignTemplate = {
   name: string;
   subject: string;
   content: string;
-  description: string;
+  description?: string;
+  brochure_attached?: boolean;
+  pdf_url?: string;
+  pdf_urls?: string[];
 };
 
 export type CampaignRenderContext = {
@@ -37,6 +40,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     name: "Introduction",
     subject: "Grow your loan business with LeadHub",
     description: "First outreach for DSAs and loan agents who need a website plus CRM.",
+    brochure_attached: false,
     content: `
       <p>Hi {{name}},</p>
       <p>I work with loan agents and DSAs who want to manage enquiries more professionally.</p>
@@ -50,7 +54,6 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       </ul>
       <p>You can see the demo here: <a href="{{demo_url}}">Open LeadHub demo</a></p>
       <p>Start your free trial here: <a href="{{signup_url}}">Create your LeadHub account</a></p>
-      <p>I have also attached the LeadHub brochure for more details.</p>
       <p>Regards,<br />{{sender_name}}<br />{{sender_phone}}<br />{{sender_email}}</p>
     `
   },
@@ -59,6 +62,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     name: "Demo Invitation",
     subject: "Quick LeadHub demo for your loan enquiries",
     description: "Invite a prospect to open the live demo and see the workflow.",
+    brochure_attached: false,
     content: `
       <p>Hi {{name}},</p>
       <p>I wanted to share a quick demo of LeadHub for {{company_name}}.</p>
@@ -73,6 +77,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     name: "Trial Reminder",
     subject: "Start your 14-day LeadHub trial",
     description: "Encourage a warm prospect to start the working free trial.",
+    brochure_attached: false,
     content: `
       <p>Hi {{name}},</p>
       <p>If you are still managing loan enquiries manually, LeadHub can help you keep every lead, note, source, and follow-up in one place.</p>
@@ -87,6 +92,7 @@ export const BUILT_IN_CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     name: "Follow-up",
     subject: "Following up on LeadHub for your loan business",
     description: "Gentle follow-up after a prior message or demo share.",
+    brochure_attached: false,
     content: `
       <p>Hi {{name}},</p>
       <p>Just following up on LeadHub.</p>

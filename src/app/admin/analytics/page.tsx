@@ -5,9 +5,7 @@ import {
   Target, 
   Zap, 
   MousePointer2, 
-  TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight
+  TrendingUp
 } from "lucide-react";
 
 export default async function AnalyticsPage() {
@@ -30,23 +28,79 @@ export default async function AnalyticsPage() {
   const paidRate = totalTrials ? (totalPaid! / totalTrials!) * 100 : 0;
 
   const metrics = [
-    { label: "Open Rate", value: `${openRate.toFixed(1)}%`, icon: Zap, color: "text-yellow-600", trend: "+2.1%", positive: true },
-    { label: "Click Rate", value: `${clickRate.toFixed(1)}%`, icon: MousePointer2, color: "text-blue-600", trend: "+0.5%", positive: true },
-    { label: "Reply Rate", value: `${replyRate.toFixed(1)}%`, icon: Target, color: "text-pink-600", trend: "-0.2%", positive: false },
-    { label: "Trial Conv. Rate", value: `${trialRate.toFixed(1)}%`, icon: TrendingUp, color: "text-indigo-600", trend: "+1.8%", positive: true },
-    { label: "Paid Conv. Rate", value: `${paidRate.toFixed(1)}%`, icon: BarChart3, color: "text-emerald-600", trend: "+0.3%", positive: true },
+    { label: "Open Rate", value: `${openRate.toFixed(1)}%`, icon: Zap, color: "text-yellow-600" },
+    { label: "Click Rate", value: `${clickRate.toFixed(1)}%`, icon: MousePointer2, color: "text-blue-600" },
+    { label: "Reply Rate", value: `${replyRate.toFixed(1)}%`, icon: Target, color: "text-pink-600" },
+    { label: "Trial Conv. Rate", value: `${trialRate.toFixed(1)}%`, icon: TrendingUp, color: "text-indigo-600" },
+    { label: "Paid Conv. Rate", value: `${paidRate.toFixed(1)}%`, icon: BarChart3, color: "text-emerald-600" },
   ];
 
-  // Dummy chart data for the last 7 days
-  const chartData = [
-    { date: "Jun 03", opens: 12, clicks: 5, signups: 2, trials: 1 },
-    { date: "Jun 04", opens: 18, clicks: 8, signups: 4, trials: 2 },
-    { date: "Jun 05", opens: 15, clicks: 6, signups: 3, trials: 1 },
-    { date: "Jun 06", opens: 25, clicks: 12, signups: 6, trials: 3 },
-    { date: "Jun 07", opens: 32, clicks: 15, signups: 8, trials: 4 },
-    { date: "Jun 08", opens: 28, clicks: 10, signups: 5, trials: 2 },
-    { date: "Jun 09", opens: 35, clicks: 18, signups: 10, trials: 5 },
-  ];
+  // First get all prospect IDs we've ever messaged
+  const { data: allMessagedProspects } = await supabase
+    .from("email_campaigns")
+    .select("prospect_id, created_at")
+    .order("created_at", { ascending: true });
+
+  // Map to track first message date for each prospect
+  const firstMessageDate: Record<string, string> = {};
+  if (allMessagedProspects) {
+    for (const campaign of allMessagedProspects) {
+      if (!firstMessageDate[campaign.prospect_id]) {
+        firstMessageDate[campaign.prospect_id] = campaign.created_at;
+      }
+    }
+  }
+
+  // Generate chart data for the last 7 days using real data
+  const chartData = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    const dateISO = date.toISOString().split('T')[0];
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nextDateISO = nextDate.toISOString().split('T')[0];
+
+    // Count opens for this date
+    const { count: opensCount } = await supabase
+      .from("email_campaigns")
+      .select("*", { count: "exact", head: true })
+      .gte("opened_at", dateISO)
+      .lt("opened_at", nextDateISO);
+
+    // Count clicks for this date
+    const { count: clicksCount } = await supabase
+      .from("email_campaigns")
+      .select("*", { count: "exact", head: true })
+      .gte("clicked_at", dateISO)
+      .lt("clicked_at", nextDateISO);
+
+    // Count prospects we first messaged this day
+    let firstContactCount = 0;
+    for (const dateStr in firstMessageDate) {
+      const firstMsgDate = firstMessageDate[dateStr].split('T')[0];
+      if (firstMsgDate === dateISO) {
+        firstContactCount++;
+      }
+    }
+
+    // Count trial starts for this date
+    const { count: trialsCount } = await supabase
+      .from("prospects")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "trial_started")
+      .gte("updated_at", dateISO)
+      .lt("updated_at", nextDateISO);
+
+    chartData.push({
+      date: dateStr,
+      opens: opensCount || 0,
+      clicks: clicksCount || 0,
+      signups: firstContactCount,
+      trials: trialsCount || 0
+    });
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-8">
@@ -64,12 +118,8 @@ export default async function AnalyticsPage() {
               </div>
               <p className="text-sm font-medium text-slate-500">{metric.label}</p>
             </div>
-            <div className="mt-4 flex items-end justify-between">
+            <div className="mt-4">
               <p className="text-2xl font-bold text-ink">{metric.value}</p>
-              <div className={`flex items-center text-xs font-semibold ${metric.positive ? "text-emerald-600" : "text-rose-600"}`}>
-                {metric.positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                {metric.trend}
-              </div>
             </div>
           </div>
         ))}

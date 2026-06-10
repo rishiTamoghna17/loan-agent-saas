@@ -45,7 +45,7 @@ export function AdminCharts({ data }: { data: any[] }) {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="mb-6 text-lg font-semibold text-ink">Signups & Conversions</h3>
+        <h3 className="mb-6 text-lg font-semibold text-ink">Contacted & Conversions</h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
@@ -65,7 +65,7 @@ export function AdminCharts({ data }: { data: any[] }) {
                 contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
               />
               <Legend />
-              <Line type="monotone" dataKey="signups" stroke="#10b981" strokeWidth={2} name="New Signups" />
+              <Line type="monotone" dataKey="signups" stroke="#10b981" strokeWidth={2} name="contacted" />
               <Line type="monotone" dataKey="trials" stroke="#f59e0b" strokeWidth={2} name="Trials Started" />
             </LineChart>
           </ResponsiveContainer>

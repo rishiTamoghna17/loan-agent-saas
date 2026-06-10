@@ -30,7 +30,46 @@ export function getCampaignBrochureFilename() {
   return path.basename(getCampaignBrochurePath());
 }
 
-export async function getCampaignBrochureAttachment(): Promise<CampaignAttachmentResult> {
+async function fetchAndEncodePdf(url: string): Promise<BrevoAttachment | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return null;
+    }
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    const filename = url.split('/').pop() || 'attachment.pdf';
+    return { name: filename, content: base64 };
+  } catch (e) {
+    console.error("Failed to fetch PDF:", e);
+    return null;
+  }
+}
+
+export async function getCampaignBrochureAttachment(
+  templatePdfUrls?: string[] | null
+): Promise<CampaignAttachmentResult> {
+  if (templatePdfUrls && templatePdfUrls.length > 0) {
+    const attachments: BrevoAttachment[] = [];
+    for (const url of templatePdfUrls) {
+      const attachment = await fetchAndEncodePdf(url);
+      if (attachment) {
+        attachments.push(attachment);
+      }
+    }
+    
+    if (attachments.length > 0) {
+      return {
+        attachments,
+        metadata: { 
+          enabled: true, 
+          attached: true, 
+          filename: attachments.map(a => a.name).join(", ") 
+        }
+      };
+    }
+  }
+
   const enabled = isCampaignBrochureEnabled();
   const configuredPath = getCampaignBrochurePath();
   const absolutePath = path.isAbsolute(configuredPath)
