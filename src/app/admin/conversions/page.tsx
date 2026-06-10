@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAdminSupabase } from "@/lib/admin-auth";
 import { 
   TrendingUp, 
   User, 
@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 export default async function ConversionsPage() {
-  const supabase = createClient();
+  const supabase = await getAdminSupabase();
 
   const { data: conversions } = await supabase
     .from("conversions")

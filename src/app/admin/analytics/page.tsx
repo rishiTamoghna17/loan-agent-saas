@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAdminSupabase } from "@/lib/admin-auth";
 import { AdminCharts } from "@/components/admin/admin-charts";
 import { 
   BarChart3, 
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 export default async function AnalyticsPage() {
-  const supabase = createClient();
+  const supabase = await getAdminSupabase();
 
   // Fetch stats for rates
   const { count: totalSent } = await supabase.from("email_campaigns").select("*", { count: "exact", head: true });

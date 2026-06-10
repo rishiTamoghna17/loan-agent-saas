@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { trackWebsiteVisit } from "@/app/demo/actions";
 
 export function LinkTracker() {
   const searchParams = useSearchParams();
@@ -10,11 +9,17 @@ export function LinkTracker() {
 
   useEffect(() => {
     if (prospectId) {
-      const userAgent = window.navigator.userAgent;
-      const pageUrl = window.location.href;
-      // IP address will be captured on the server side if needed, 
-      // but for now we pass a placeholder or let the server handle it
-      trackWebsiteVisit(prospectId, pageUrl, userAgent, "client-side-visit");
+      fetch("/api/track/demo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: prospectId,
+          page_url: window.location.href
+        }),
+        keepalive: true
+      }).catch(() => {
+        // Tracking must never block the public demo page.
+      });
     }
   }, [prospectId]);
 

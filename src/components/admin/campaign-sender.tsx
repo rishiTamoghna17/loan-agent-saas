@@ -22,7 +22,7 @@ export function CampaignSender({
   const router = useRouter();
   const [isSending, setIsSending] = useState(false);
   const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATES[0].id);
-  const [result, setResult] = useState<{ success: boolean; count?: number; error?: string } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; count?: number; failedCount?: number; error?: string } | null>(null);
   
   // Clear result when selection changes
   useEffect(() => {
@@ -195,8 +195,8 @@ export function CampaignSender({
                 <>
                   <CheckCircle2 className="h-4 w-4" />
                   {result.count === 1 
-                    ? "Campaign sent successfully to 1 prospect!" 
-                    : `Campaign sent successfully to ${result.count} prospects!`}
+                    ? `Campaign sent successfully to 1 prospect${result.failedCount ? `, ${result.failedCount} failed` : ""}.` 
+                    : `Campaign sent successfully to ${result.count} prospects${result.failedCount ? `, ${result.failedCount} failed` : ""}.`}
                 </>
               ) : (
                 <>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { 
   LayoutDashboard, 
   Users, 
@@ -11,21 +10,10 @@ import {
 import { logout } from "@/app/auth/actions";
 import { LeadHubMark } from "@/components/brand/lead-hub-mark";
 import { PendingButton } from "@/components/ui/pending-button";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminUser } from "@/lib/admin-auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  // Secondary check for admin email in server component
-  const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(email => email.trim().toLowerCase());
-  if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
-    redirect("/dashboard");
-  }
+  await requireAdminUser({ redirectOnFailure: true });
 
   return (
     <main className="min-h-screen bg-slate-50">

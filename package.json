@@ -12,7 +12,10 @@
     "configure:smtp": "node scripts/configure-supabase-smtp.mjs",
     "test:auth-errors": "node scripts/test-auth-errors.mjs",
     "test:auth-email": "node scripts/test-auth-email.mjs",
-    "test:db": "node scripts/test-supabase-db.mjs"
+    "test:brevo-send": "node scripts/test-brevo-send.mjs",
+    "test:brevo-webhook": "node scripts/test-brevo-webhook.mjs",
+    "test:db": "node scripts/test-supabase-db.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -33,6 +36,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^20.17.9",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.3.12",

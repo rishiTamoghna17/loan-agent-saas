@@ -131,7 +131,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` is used only by the Node test script for setup and cleanup. It is not imported by app client code.
+`SUPABASE_SERVICE_ROLE_KEY` is used only in server actions, route handlers, and Node test/setup scripts. It is not imported by app client code.
 
 If the test reports `This endpoint requires a valid Bearer token`, the value in `SUPABASE_SERVICE_ROLE_KEY` is not a real Supabase service-role JWT. Replace it with the Project Settings -> API -> service_role secret for a disposable/test project.
 
@@ -194,6 +194,24 @@ BREVO_SMTP_SENDER_NAME=LeadHub
 ```
 
 Supabase Auth still sends signup and confirmation emails, so the same SMTP values must also be entered in the Supabase Dashboard. The Next.js app reads these `BREVO_*` variables only on the server to send “New Lead Received” notification emails after public lead submission.
+
+Founder admin campaigns use Brevo's Transactional Email API and webhook tracking. Add these server-only values in local `.env.local` and in Vercel:
+
+```bash
+ADMIN_EMAILS=tamoghna171099@gmail.com
+BREVO_API_KEY=
+BREVO_WEBHOOK_SECRET=
+CAMPAIGN_BASE_URL=https://leadhub-loan-crm.vercel.app
+BREVO_TEST_EMAIL=
+```
+
+Add this webhook in Brevo Transactional webhooks:
+
+```text
+https://leadhub-loan-crm.vercel.app/api/webhooks/brevo?secret=BREVO_WEBHOOK_SECRET
+```
+
+Enable delivered, opened, clicked, hard bounce, soft bounce, blocked, and spam events. Campaign emails store a row in `email_campaigns` before the provider call, then update to `sent` or `failed`; webhook events update delivered/opened/clicked/bounced timestamps and lead score.
 
 You can also configure Supabase Auth SMTP through the Management API:
 
@@ -272,13 +290,18 @@ BREVO_SMTP_USERNAME
 BREVO_SMTP_PASSWORD
 BREVO_SMTP_SENDER_EMAIL
 BREVO_SMTP_SENDER_NAME
+ADMIN_EMAILS
+BREVO_API_KEY
+BREVO_WEBHOOK_SECRET
+CAMPAIGN_BASE_URL
 ```
 
 4. Apply the Supabase migration before testing production.
 5. Configure Brevo SMTP in the Supabase Dashboard before opening public signup.
-6. Set the Supabase Auth site URL to your Vercel domain.
-7. Deploy.
+6. Configure the Brevo Transactional webhook for `/api/webhooks/brevo`.
+7. Set the Supabase Auth site URL to your Vercel domain.
+8. Deploy.
 
 ## Security
 
-Do not import or reference `SUPABASE_SERVICE_ROLE_KEY` in client components or browser utilities. Current server-only uses are limited to logo upload and local DB test/setup scripts.
+Do not import or reference `SUPABASE_SERVICE_ROLE_KEY` in client components or browser utilities. Current uses are server-only: logo upload, founder admin CRM operations after `ADMIN_EMAILS` verification, tracking webhooks, and local test/setup scripts.
