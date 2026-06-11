@@ -104,6 +104,32 @@ export const deleteLeadSchema = z.object({
   lead_id: z.string().uuid()
 });
 
+export const followUpSchema = z.object({
+  id: z.string().uuid().optional(),
+  lead_id: z.string().uuid(),
+  due_at: z.string().datetime({ offset: true }),
+  note: optionalText(800)
+});
+
+export const followUpStatusSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(["pending", "completed", "cancelled"])
+});
+
+export const notificationPreferencesSchema = z.object({
+  timezone: z.string().trim().min(1).max(80).refine((value) => {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Choose a valid timezone"),
+  new_lead_email_enabled: z.boolean(),
+  overdue_digest_email_enabled: z.boolean(),
+  digest_hour: z.coerce.number().int().min(0).max(23)
+});
+
 export const analyticsEventSchema = z.object({
   agent_id: z.string().uuid(),
   lead_id: z.string().uuid().optional().nullable(),

@@ -3,6 +3,7 @@
 import { getAdminSupabase, requireAdminUser } from "@/lib/admin-auth";
 import { getCampaignBrochureAttachment } from "@/lib/campaign-attachments";
 import { buildCampaignLinks, maskProviderError } from "@/lib/campaign-tracking";
+import { classifyBrevoError, getBrevoApiHealth } from "@/lib/brevo";
 import {
   createCampaignRenderContext,
   renderCampaignTemplate
@@ -224,8 +225,11 @@ export async function getProspects(options: {
   city?: string;
   query?: string;
   disablePagination?: boolean;
-  engagement?: 'opened' | 'clicked' | 'replied' | 'any';
+  engagement?: 'sent' | 'delivered' | 'opened' | 'clicked' | 'replied' | 'failed' | 'any';
   includeEmailHistory?: boolean;
+  sortBy?: 'created_at' | 'name' | 'lead_score' | 'status' | 'city';
+  sortDirection?: 'asc' | 'desc';
+  view?: "active" | "archived" | "deleted";
 }) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
@@ -237,27 +241,23 @@ export async function getProspects(options: {
     city, 
     query,
     disablePagination = false,
-    engagement
+    engagement,
+    sortBy = "lead_score",
+    sortDirection = "desc",
+    view = "active"
   } = options;
 
-  // First check if deleted_at column exists (gracefully handle missing migration)
+  const allowedPageSizes = [10, 20, 25, 50, 100];
+  const effectivePageSize = allowedPageSizes.includes(pageSize) ? pageSize : 20;
+  const effectivePage = Math.max(1, page);
+
   let dbQuery = supabase
     .from("prospects")
-    .select("*", { count: "exact" })
-    .order("lead_score", { ascending: false });
+    .select("*", { count: "exact" });
 
-  try {
-    const { error } = await supabase
-      .from("prospects")
-      .select("deleted_at")
-      .limit(1);
-    
-    if (!error) {
-      dbQuery = dbQuery.is("deleted_at", null);
-    }
-  } catch (err) {
-    // Ignore error - column doesn't exist yet
-  }
+  if (view === "archived") dbQuery = dbQuery.not("archived_at", "is", null).is("deleted_at", null);
+  else if (view === "deleted") dbQuery = dbQuery.not("deleted_at", "is", null);
+  else dbQuery = dbQuery.is("archived_at", null).is("deleted_at", null);
 
   if (status) dbQuery = dbQuery.eq("status", status);
   if (city) dbQuery = dbQuery.eq("city", city);
@@ -270,12 +270,18 @@ export async function getProspects(options: {
       .from("email_campaigns")
       .select("prospect_id");
     
-    if (engagement === 'opened') {
+    if (engagement === 'sent') {
+      emailCampaignQuery = emailCampaignQuery.not("email_sent_at", "is", null);
+    } else if (engagement === 'delivered') {
+      emailCampaignQuery = emailCampaignQuery.not("delivered_at", "is", null);
+    } else if (engagement === 'opened') {
       emailCampaignQuery = emailCampaignQuery.not("opened_at", "is", null);
     } else if (engagement === 'clicked') {
       emailCampaignQuery = emailCampaignQuery.not("clicked_at", "is", null);
     } else if (engagement === 'replied') {
       emailCampaignQuery = emailCampaignQuery.not("replied_at", "is", null);
+    } else if (engagement === 'failed') {
+      emailCampaignQuery = emailCampaignQuery.in("status", ["failed", "bounced", "blocked", "spam"]);
     } else if (engagement === 'any') {
       emailCampaignQuery = emailCampaignQuery.or("opened_at.not.is.null,clicked_at.not.is.null,replied_at.not.is.null");
     }
@@ -287,8 +293,8 @@ export async function getProspects(options: {
         prospects: [],
         count: 0,
         totalPages: 0,
-        currentPage: page,
-        pageSize
+        currentPage: effectivePage,
+        pageSize: effectivePageSize
       };
     }
 
@@ -300,21 +306,23 @@ export async function getProspects(options: {
         prospects: [],
         count: 0,
         totalPages: 0,
-        currentPage: page,
-        pageSize
+        currentPage: effectivePage,
+        pageSize: effectivePageSize
       };
     }
 
     dbQuery = dbQuery.in("id", engagedProspectIds);
   }
 
+  dbQuery = dbQuery.order(sortBy, { ascending: sortDirection === "asc" });
+
   let data, count, error;
   
   if (disablePagination) {
     ({ data, count, error } = await dbQuery);
   } else {
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
+    const from = (effectivePage - 1) * effectivePageSize;
+    const to = from + effectivePageSize - 1;
     ({ data, count, error } = await dbQuery.range(from, to));
   }
 
@@ -358,26 +366,116 @@ export async function getProspects(options: {
   return {
     prospects: prospectsWithHistory,
     count: count || 0,
-    totalPages: count ? Math.ceil(count / pageSize) : 0,
-    currentPage: page,
-    pageSize
+    totalPages: count ? Math.ceil(count / effectivePageSize) : 0,
+    currentPage: effectivePage,
+    pageSize: effectivePageSize
   };
 }
 
 export async function updateProspectStatus(id: string, status: string) {
-  await ensureAdmin();
+  const user = await requireAdminUser();
   const supabase = await getAdminSupabase();
+  const { data: oldData } = await supabase.from("prospects").select("*").eq("id", id).single();
   const { error } = await supabase
     .from("prospects")
     .update({ status })
     .eq("id", id);
 
   if (error) throw error;
+  await supabase.from("audit_logs").insert({
+    user_id: user.id,
+    action: "update_status",
+    table_name: "prospects",
+    record_id: id,
+    old_data: oldData,
+    new_data: { status }
+  });
   revalidatePath("/admin/prospects");
 }
 
+const prospectStatuses = new Set([
+  "new", "contacted", "opened", "clicked", "replied", "demo_requested",
+  "trial_started", "converted", "lost"
+]);
+
+export async function updateProspect(id: string, values: Record<string, FormDataEntryValue | null>) {
+  const user = await requireAdminUser();
+  const supabase = await getAdminSupabase();
+  const allowed = ["name", "company_name", "email", "phone", "city", "state", "loan_category", "linkedin_url", "website_url", "notes"];
+  const update: Record<string, string | null | number> = {};
+  for (const key of allowed) {
+    const value = values[key];
+    update[key] = typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+  const status = String(values.status ?? "");
+  if (prospectStatuses.has(status)) update.status = status;
+  const score = Number(values.lead_score);
+  if (Number.isFinite(score) && score >= 0) update.lead_score = Math.floor(score);
+
+  const { data: oldData, error: oldError } = await supabase.from("prospects").select("*").eq("id", id).single();
+  if (oldError) throw oldError;
+  const { data, error } = await supabase.from("prospects").update(update).eq("id", id).select("*").single();
+  if (error) return { success: false, error: error.message };
+  await supabase.from("audit_logs").insert({
+    user_id: user.id,
+    action: "edit",
+    table_name: "prospects",
+    record_id: id,
+    old_data: oldData,
+    new_data: update
+  });
+  revalidatePath("/admin/prospects");
+  revalidatePath(`/admin/prospects/${id}`);
+  return { success: true, data };
+}
+
+export async function bulkProspectAction(input: {
+  ids: string[];
+  action: "status" | "archive" | "delete" | "restore_archive" | "restore_delete";
+  status?: string;
+}) {
+  const user = await requireAdminUser();
+  const supabase = await getAdminSupabase();
+  const ids = [...new Set(input.ids)].filter((id) => uuidRegex.test(id)).slice(0, 500);
+  if (!ids.length) return { success: false, error: "Select at least one prospect." };
+
+  const update: Record<string, string | null> = {};
+  if (input.action === "status") {
+    if (!input.status || !prospectStatuses.has(input.status)) return { success: false, error: "Choose a valid status." };
+    update.status = input.status;
+  } else if (input.action === "archive") {
+    update.archived_at = new Date().toISOString();
+    update.archived_by = user.id;
+  } else if (input.action === "delete") {
+    update.deleted_at = new Date().toISOString();
+    update.deleted_by = user.id;
+  } else if (input.action === "restore_archive") {
+    update.archived_at = null;
+    update.archived_by = null;
+  } else {
+    update.deleted_at = null;
+    update.deleted_by = null;
+  }
+
+  const { data: oldRows, error: oldError } = await supabase.from("prospects").select("*").in("id", ids);
+  if (oldError) return { success: false, error: oldError.message };
+  const { data, error } = await supabase.from("prospects").update(update).in("id", ids).select("id");
+  if (error) return { success: false, error: error.message };
+  await supabase.from("audit_logs").insert((oldRows ?? []).map((row) => ({
+    user_id: user.id,
+    action: `bulk_${input.action}`,
+    table_name: "prospects",
+    record_id: row.id,
+    old_data: row,
+    new_data: update
+  })));
+  revalidatePath("/admin/prospects");
+  revalidatePath("/admin");
+  return { success: true, count: data?.length ?? 0 };
+}
+
 export async function deleteProspect(id: string) {
-  await ensureAdmin();
+  const user = await requireAdminUser();
   const supabase = await getAdminSupabase();
   
   // Soft delete by setting deleted_at timestamp
@@ -391,13 +489,14 @@ export async function deleteProspect(id: string) {
   
   const { error: updateError } = await supabase
     .from("prospects")
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
     .eq("id", id);
 
   if (updateError) throw updateError;
   
   // Log to audit table
   await supabase.from("audit_logs").insert({
+    user_id: user.id,
     action: "delete",
     table_name: "prospects",
     record_id: id,
@@ -422,6 +521,17 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
   if (!apiKey) {
     console.error("Missing BREVO_API_KEY");
     return { success: false, error: "Brevo API Key not configured" };
+  }
+
+  const brevoHealth = await getBrevoApiHealth();
+  if (!brevoHealth.ok) {
+    return {
+      success: false,
+      error: brevoHealth.message,
+      errorKind: brevoHealth.kind,
+      count: 0,
+      failedCount: 0
+    };
   }
 
   const { data: prospects, error: fetchError } = await adminSupabase
@@ -570,15 +680,30 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
         successCount++;
       } else {
         const errorData = await response.json().catch(() => ({ status: response.status, message: response.statusText }));
+        const classifiedError = classifyBrevoError(response.status, errorData);
         console.error(`Brevo API error for ${prospect.email}:`, errorData);
         await adminSupabase
           .from("email_campaigns")
           .update({
             status: "failed",
-            provider_error: maskProviderError({ ...errorData, status: response.status })
+            provider_error: maskProviderError({
+              ...errorData,
+              status: response.status,
+              error: classifiedError.kind
+            })
           })
           .eq("id", campaignRow.id);
         failedCount++;
+
+        if (classifiedError.kind === "unauthorized_ip" || classifiedError.kind === "invalid_key") {
+          return {
+            success: false,
+            error: classifiedError.message,
+            errorKind: classifiedError.kind,
+            count: successCount,
+            failedCount
+          };
+        }
       }
     } catch (error) {
       console.error(`Failed to send email to ${prospect.email}:`, error);
@@ -623,15 +748,24 @@ export async function getProspect(id: string) {
   return data;
 }
 
-export async function getProspectEmailHistory(prospectId: string) {
+export async function getProspectEmailHistory(prospectId: string, filters: {
+  status?: string;
+  template?: string;
+  from?: string;
+  to?: string;
+} = {}) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
   
-  const { data, error } = await supabase
+  let query = supabase
     .from("email_campaigns")
     .select("*")
-    .eq("prospect_id", prospectId)
-    .order("created_at", { ascending: false });
+    .eq("prospect_id", prospectId);
+  if (filters.status) query = query.eq("status", filters.status);
+  if (filters.template) query = query.eq("template_name", filters.template);
+  if (filters.from) query = query.gte("created_at", `${filters.from}T00:00:00`);
+  if (filters.to) query = query.lte("created_at", `${filters.to}T23:59:59`);
+  const { data, error } = await query.order("created_at", { ascending: false });
     
   if (error) throw error;
   return data || [];

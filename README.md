@@ -16,7 +16,11 @@ Implemented now:
 - New lead notification email through server-side Brevo SMTP
 - Lead source tracking: Website, WhatsApp, Facebook, Instagram, Google, Referral
 - EMI calculator and WhatsApp CTA
-- Agent dashboard with lead counts, analytics, follow-up reminders, notes, WhatsApp contact action, and delete
+- Agent dashboard with lead counts, analytics, scheduled follow-up tasks, notes, WhatsApp contact action, and delete
+- Lead search, source/status/loan/date/follow-up filters, sorting, pagination, and filtered CSV export
+- Configurable new-lead emails and daily overdue follow-up digest
+- Forgot-password and secure Supabase recovery flow
+- Founder prospect editing, selected-row bulk actions, archive/delete restore, CSV export, and campaign history filters
 - Agent branding: primary color, hero title, hero subtitle, and banner image URL
 - Trial fields and expired-trial dashboard lock
 - Custom domain fields and connected-domain root rewrite
@@ -178,7 +182,7 @@ Sender name: BREVO_SMTP_SENDER_NAME
 
 8. In Supabase Auth URL settings, confirm:
    - Site URL points to your production domain.
-   - Redirect URLs include your production auth/dashboard URLs.
+   - Redirect URLs include your production auth/dashboard URLs and `/auth/callback?next=/reset-password`.
 9. In Supabase Auth email templates, confirm the confirmation email copy and redirect behavior.
 10. Test with one real signup and confirm the email appears in Brevo's transactional email logs.
 
@@ -219,6 +223,10 @@ https://leadhub-loan-crm.vercel.app/api/webhooks/brevo?secret=BREVO_WEBHOOK_SECR
 
 Enable delivered, opened, clicked, hard bounce, soft bounce, blocked, and spam events. Campaign emails store a row in `email_campaigns` before the provider call, then update to `sent` or `failed`; webhook events update delivered/opened/clicked/bounced timestamps and lead score.
 
+Campaigns are sent through Brevo's HTTPS Transactional API, not SMTP. Vercel serverless functions do not have a stable outbound IP by default, so Brevo's **Security -> Authorized IPs -> API keys** blocking must be deactivated unless the project uses paid static egress or a static-IP proxy. Keep SMTP-key blocking configured separately as needed.
+
+After changing the authorized-IP policy, rotate `BREVO_API_KEY` and update it only in server-side environments. The admin overview performs a Brevo API health check, records failed provider responses safely, and shows recent webhook audit events.
+
 Useful checks:
 
 ```bash
@@ -226,6 +234,18 @@ npm run test:campaign-templates
 npm run test:brevo-send
 npm run test:brevo-webhook
 ```
+
+## Follow-up Reminder Cron
+
+The hourly Vercel Cron route is `/api/cron/follow-up-reminders`. It checks each agent's configured timezone and digest hour, sends at most one overdue digest per local day, and skips disabled or expired accounts.
+
+Add a long random server-only secret locally and in Vercel:
+
+```bash
+CRON_SECRET=
+```
+
+Vercel sends this value as `Authorization: Bearer CRON_SECRET`. Do not invoke the authorized route in production while testing unless you intend to send real reminder emails.
 
 You can also configure Supabase Auth SMTP through the Management API:
 

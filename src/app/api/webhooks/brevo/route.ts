@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   appendCampaignEvent,
@@ -28,7 +29,7 @@ const EVENT_CONFIG: Record<string, { status: string; timestampField?: string; sc
 
 function webhookAuthorized(req: Request) {
   const secret = process.env.BREVO_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
 
   const url = new URL(req.url);
   const supplied =
@@ -36,7 +37,11 @@ function webhookAuthorized(req: Request) {
     req.headers.get("x-webhook-secret") ||
     url.searchParams.get("secret");
 
-  return supplied === secret;
+  if (!supplied) return false;
+
+  const expected = Buffer.from(secret);
+  const actual = Buffer.from(supplied);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
 function extractMessageId(event: BrevoWebhookEvent) {
@@ -55,15 +60,60 @@ function getEventTimestamp(event: BrevoWebhookEvent) {
   return new Date().toISOString();
 }
 
+function sanitizeWebhookPayload(event: BrevoWebhookEvent) {
+  const safe: Record<string, unknown> = {};
+  for (const key of ["event", "type", "message-id", "messageId", "message_id", "email", "link", "ts", "date", "timestamp", "tag"]) {
+    const value = event[key];
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
+      safe[key] = typeof value === "string" ? value.slice(0, 2000) : value;
+    }
+  }
+  return safe;
+}
+
+async function recordWebhookEvent(
+  supabase: ReturnType<typeof createAdminClient>,
+  event: BrevoWebhookEvent,
+  details: {
+    eventType?: string;
+    messageId?: string;
+    campaignId?: string;
+    prospectId?: string;
+    processingStatus: "processed" | "duplicate" | "unmatched" | "unsupported" | "failed";
+    unmatchedReason?: string;
+  }
+) {
+  const { error } = await supabase.from("email_webhook_events").insert({
+    provider: "brevo",
+    event_type: details.eventType || null,
+    message_id: details.messageId || null,
+    recipient_email: typeof event.email === "string" ? event.email.slice(0, 320) : null,
+    campaign_id: details.campaignId || null,
+    prospect_id: details.prospectId || null,
+    processing_status: details.processingStatus,
+    unmatched_reason: details.unmatchedReason || null,
+    sanitized_payload: sanitizeWebhookPayload(event)
+  });
+
+  if (error) {
+    console.error("Failed to record Brevo webhook audit event", error);
+  }
+}
+
 export async function POST(req: Request) {
+  const supabase = createAdminClient();
+
   if (!webhookAuthorized(req)) {
+    await recordWebhookEvent(supabase, {}, {
+      processingStatus: "failed",
+      unmatchedReason: "Unauthorized webhook request"
+    });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const payload = await req.json();
     const events: BrevoWebhookEvent[] = Array.isArray(payload) ? payload : [payload];
-    const supabase = createAdminClient();
     let processed = 0;
     let unmatched = 0;
 
@@ -75,6 +125,12 @@ export async function POST(req: Request) {
       if (!messageId || !config) {
         unmatched++;
         console.warn("Ignoring unsupported Brevo webhook event", { eventType, messageId });
+        await recordWebhookEvent(supabase, event, {
+          eventType,
+          messageId,
+          processingStatus: "unsupported",
+          unmatchedReason: !messageId ? "Missing message ID" : "Unsupported event type"
+        });
         continue;
       }
 
@@ -88,6 +144,12 @@ export async function POST(req: Request) {
       if (campaignError || !campaign) {
         unmatched++;
         console.warn(`No campaign found for Brevo message_id: ${messageId}`);
+        await recordWebhookEvent(supabase, event, {
+          eventType,
+          messageId,
+          processingStatus: "unmatched",
+          unmatchedReason: campaignError?.message || "No campaign matched the Brevo message ID"
+        });
         continue;
       }
 
@@ -119,6 +181,14 @@ export async function POST(req: Request) {
 
       if (updateError) {
         console.error("Failed to update campaign webhook event", updateError);
+        await recordWebhookEvent(supabase, event, {
+          eventType,
+          messageId,
+          campaignId: campaign.id,
+          prospectId: campaign.prospect_id,
+          processingStatus: "failed",
+          unmatchedReason: updateError.message
+        });
         continue;
       }
 
@@ -133,6 +203,13 @@ export async function POST(req: Request) {
           .eq("id", campaign.prospect_id);
       }
 
+      await recordWebhookEvent(supabase, event, {
+        eventType,
+        messageId,
+        campaignId: campaign.id,
+        prospectId: campaign.prospect_id,
+        processingStatus: alreadyScored ? "duplicate" : "processed"
+      });
       processed++;
     }
 
@@ -142,4 +219,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateProspectStatus } from "@/app/admin/actions";
+import { updateProspect, updateProspectStatus } from "@/app/admin/actions";
 import { useRouter } from "next/navigation";
 import { 
   Mail, 
@@ -45,15 +45,19 @@ const statusIcons = {
 interface ProspectDetailClientProps {
   prospect: any;
   emailHistory: any[];
+  historyFilters?: Record<string, string | undefined>;
 }
 
 export function ProspectDetailClient({ 
   prospect, 
-  emailHistory 
+  emailHistory,
+  historyFilters = {}
 }: ProspectDetailClientProps) {
   const router = useRouter();
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [localProspect, setLocalProspect] = useState<any>(prospect);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editMessage, setEditMessage] = useState("");
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -64,6 +68,19 @@ export function ProspectDetailClient({
       console.error("Error updating status:", error);
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleEdit = async (formData: FormData) => {
+    setEditMessage("");
+    const values = Object.fromEntries(formData.entries());
+    const result = await updateProspect(localProspect.id, values);
+    if (result.success) {
+      setLocalProspect(result.data);
+      setIsEditing(false);
+      setEditMessage("Prospect updated.");
+    } else {
+      setEditMessage(result.error ?? "Could not update prospect.");
     }
   };
 
@@ -103,7 +120,7 @@ export function ProspectDetailClient({
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <button className="text-slate-400 hover:text-brand-blue transition-colors">
+                <button onClick={() => setIsEditing((value) => !value)} className="text-slate-400 hover:text-brand-blue transition-colors" aria-label="Edit prospect">
                   <Edit2 className="h-4 w-4" />
                 </button>
               </div>
@@ -145,6 +162,28 @@ export function ProspectDetailClient({
                 </div>
               )}
             </div>
+            {isEditing ? (
+              <form action={handleEdit} className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+                {[
+                  ["name", "Contact name"], ["company_name", "Company"], ["email", "Email"], ["phone", "Phone"],
+                  ["city", "City"], ["state", "State"], ["loan_category", "Loan category"],
+                  ["linkedin_url", "LinkedIn URL"], ["website_url", "Website URL"]
+                ].map(([name, label]) => (
+                  <label key={name} className="block text-xs font-semibold text-slate-600">{label}
+                    <input name={name} defaultValue={localProspect[name] ?? ""} className="field mt-1" />
+                  </label>
+                ))}
+                <label className="block text-xs font-semibold text-slate-600">Lead score
+                  <input name="lead_score" type="number" min="0" defaultValue={localProspect.lead_score ?? 0} className="field mt-1" />
+                </label>
+                <input type="hidden" name="status" value={localProspect.status} />
+                <label className="block text-xs font-semibold text-slate-600">Notes
+                  <textarea name="notes" defaultValue={localProspect.notes ?? ""} className="field mt-1 min-h-24" />
+                </label>
+                <button className="btn-primary w-full">Save prospect</button>
+              </form>
+            ) : null}
+            {editMessage ? <p className="mt-3 text-xs text-slate-600">{editMessage}</p> : null}
           </div>
 
           {/* Status Update Card */}
@@ -175,6 +214,16 @@ export function ProspectDetailClient({
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-slate-100 bg-slate-50 px-6 py-4">
               <h2 className="text-lg font-semibold text-ink">Activity Timeline</h2>
+              <form className="mt-3 grid gap-2 sm:grid-cols-4">
+                <select name="status" defaultValue={historyFilters.status ?? ""} className="field">
+                  <option value="">All events</option>
+                  {["sent", "delivered", "opened", "clicked", "replied", "failed", "bounced", "blocked", "spam"].map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+                <input name="template" defaultValue={historyFilters.template ?? ""} placeholder="Template name" className="field" />
+                <input name="from" type="date" defaultValue={historyFilters.from ?? ""} className="field" />
+                <input name="to" type="date" defaultValue={historyFilters.to ?? ""} className="field" />
+                <button className="btn-secondary sm:col-span-4">Filter campaign history</button>
+              </form>
             </div>
             
             {emailHistory.length === 0 ? (

@@ -3,13 +3,17 @@ import { redirect } from "next/navigation";
 import { AlertTriangle, BellRing, Building2, Download, Globe2, MapPin, Mail, Phone, Trash2, UserRound } from "lucide-react";
 import { addLeadNote, deleteLead } from "./actions";
 import { ContactLeadButton } from "@/components/dashboard/contact-lead-button";
+import { FollowUpControls } from "@/components/dashboard/follow-up-controls";
+import { LeadFilters } from "@/components/dashboard/lead-filters";
+import { LeadPagination } from "@/components/dashboard/lead-pagination";
 import { LeadStatusSelect } from "@/components/dashboard/lead-status-select";
 import { PendingButton } from "@/components/ui/pending-button";
 import { SUPPORT_CONTACT } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { classifyFollowUp, formatFollowUpDate } from "@/lib/follow-ups";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const supabase = createClient();
   const {
     data: { user }
@@ -20,26 +24,31 @@ export default async function DashboardPage() {
   const { data: agent } = await supabase.from("agents").select("*").eq("user_id", user.id).single();
   if (!agent) redirect("/signup");
 
-  const [leadResult, eventResult] = await Promise.all([
+  const [leadResult, eventResult, followUpResult, preferenceResult] = await Promise.all([
     supabase
       .from("leads")
-      .select("*, lead_notes(id, note, created_at)")
+      .select("*, lead_notes(id, note, created_at), lead_follow_ups(id,due_at,note,status,completed_at,created_at)")
       .eq("agent_id", agent.id)
       .order("created_at", { ascending: false }),
-    supabase.from("agent_events").select("event_type").eq("agent_id", agent.id)
+    supabase.from("agent_events").select("event_type").eq("agent_id", agent.id),
+    supabase.from("lead_follow_ups").select("*, leads!inner(name,phone,loan_type)").eq("agent_id", agent.id).order("due_at"),
+    supabase.from("agent_notification_preferences").select("*").eq("agent_id", agent.id).maybeSingle()
   ]);
   const leadRows = leadResult.data;
   const events = eventResult.data ?? [];
   const leads = leadRows ?? [];
+  const timezone = preferenceResult.data?.timezone ?? "Asia/Kolkata";
+  const activeFollowUps = (followUpResult.data ?? []).filter((item) => item.status === "pending");
 
   const now = new Date();
   const trialEndsAt = new Date(agent.trial_ends_at ?? now.toISOString());
   const trialDaysRemaining = Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86_400_000));
   const isTrialExpired = agent.plan_status === "expired" || (agent.plan_status === "trial" && trialDaysRemaining <= 0);
-  const staleLeadCutoff = now.getTime() - 2 * 86_400_000;
-  const followUpReminders = leads.filter(
-    (lead) => ["new", "follow_up"].includes(lead.status) && new Date(lead.updated_at).getTime() < staleLeadCutoff
-  );
+  const followUpGroups = {
+    overdue: activeFollowUps.filter((item) => classifyFollowUp(item.due_at, timezone, now) === "overdue"),
+    today: activeFollowUps.filter((item) => classifyFollowUp(item.due_at, timezone, now) === "today"),
+    upcoming: activeFollowUps.filter((item) => classifyFollowUp(item.due_at, timezone, now) === "upcoming")
+  };
 
   const counts = {
     total: leads.length,
@@ -56,6 +65,38 @@ export default async function DashboardPage() {
       ? Math.round((events.filter((event) => event.event_type === "lead_submission").length / events.filter((event) => event.event_type === "website_visit").length) * 100)
       : 0
   };
+  const filterValues = Object.fromEntries(Object.entries(searchParams).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? "" : value ?? ""])) as Record<string, string>;
+  const pageSize = [10, 20, 50, 100].includes(Number(filterValues.pageSize)) ? Number(filterValues.pageSize) : 20;
+  const requestedPage = Math.max(1, Number(filterValues.page) || 1);
+  const filteredLeads = leads.filter((lead) => {
+    const q = filterValues.q?.toLowerCase();
+    const pending = Array.isArray(lead.lead_follow_ups) ? lead.lead_follow_ups.find((item: { status: string }) => item.status === "pending") : null;
+    if (q && !lead.name.toLowerCase().includes(q) && !lead.phone.toLowerCase().includes(q)) return false;
+    if (filterValues.status && lead.status !== filterValues.status) return false;
+    if (filterValues.source && lead.source !== filterValues.source) return false;
+    if (filterValues.loanType && lead.loan_type !== filterValues.loanType) return false;
+    if (filterValues.from && lead.created_at < `${filterValues.from}T00:00:00`) return false;
+    if (filterValues.to && lead.created_at > `${filterValues.to}T23:59:59`) return false;
+    if (filterValues.followUp === "none" && pending) return false;
+    if (filterValues.followUp && filterValues.followUp !== "none" && (!pending || classifyFollowUp(pending.due_at, timezone, now) !== filterValues.followUp)) return false;
+    return true;
+  }).sort((a, b) => {
+    const aFollowUp = a.lead_follow_ups?.find((item: { status: string }) => item.status === "pending")?.due_at ?? "9999";
+    const bFollowUp = b.lead_follow_ups?.find((item: { status: string }) => item.status === "pending")?.due_at ?? "9999";
+    if (filterValues.sort === "created_asc") return a.created_at.localeCompare(b.created_at);
+    if (filterValues.sort === "amount_desc") return Number(b.required_amount) - Number(a.required_amount);
+    if (filterValues.sort === "amount_asc") return Number(a.required_amount) - Number(b.required_amount);
+    if (filterValues.sort === "name_asc") return a.name.localeCompare(b.name);
+    if (filterValues.sort === "status_asc") return a.status.localeCompare(b.status);
+    if (filterValues.sort === "follow_up_asc") return aFollowUp.localeCompare(bFollowUp);
+    return b.created_at.localeCompare(a.created_at);
+  });
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const visibleLeads = filteredLeads.slice((page - 1) * pageSize, page * pageSize);
+  const exportParams = new URLSearchParams(filterValues);
+  exportParams.delete("page");
+  exportParams.delete("pageSize");
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-6">
@@ -129,17 +170,20 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {followUpReminders.length ? (
+      {activeFollowUps.length ? (
         <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
           <div className="flex items-start gap-3">
             <BellRing className="mt-1 h-5 w-5 shrink-0 text-amber-600" />
             <div>
-              <h2 className="font-semibold text-amber-950">Follow-up pending</h2>
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
-                {followUpReminders.slice(0, 4).map((lead) => (
-                  <div key={lead.id} className="rounded-md border border-amber-200 bg-white p-3 text-sm">
-                    <p className="font-semibold text-ink">{lead.name}</p>
-                    <p className="text-slate-600">{lead.loan_type} · Updated {formatDate(lead.updated_at)}</p>
+              <h2 className="font-semibold text-amber-950">Follow-up tasks</h2>
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                {(["overdue", "today", "upcoming"] as const).map((group) => (
+                  <div key={group} className="rounded-md border border-amber-200 bg-white p-3 text-sm">
+                    <p className="font-semibold capitalize text-ink">{group} · {followUpGroups[group].length}</p>
+                    {followUpGroups[group].slice(0, 3).map((task) => {
+                      const lead = Array.isArray(task.leads) ? task.leads[0] : task.leads;
+                      return <p key={task.id} className="mt-2 text-xs text-slate-600">{lead?.name} · {formatFollowUpDate(task.due_at, timezone)}</p>;
+                    })}
                   </div>
                 ))}
               </div>
@@ -166,11 +210,12 @@ export default async function DashboardPage() {
       <section className="card mt-6 overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-ink">Leads</h2>
-          <a href="/api/leads/export" className="btn-secondary">
+          <a href={`/api/leads/export?${exportParams.toString()}`} className="btn-secondary">
             <Download className="h-4 w-4" />
             Export CSV
           </a>
         </div>
+        <LeadFilters values={filterValues} />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1160px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -187,7 +232,7 @@ export default async function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {leads.map((lead) => (
+              {visibleLeads.map((lead) => (
                 <tr key={lead.id} className="align-top">
                   <td className="px-4 py-4">
                     <p className="font-semibold text-slate-900">{lead.name}</p>
@@ -229,6 +274,7 @@ export default async function DashboardPage() {
                       <input name="note" className="field min-w-56" placeholder="Add note" disabled={isTrialExpired} />
                       <PendingButton className="btn-secondary" pendingText="Adding..." disabled={isTrialExpired}>Add</PendingButton>
                     </form>
+                    <FollowUpControls leadId={lead.id} timezone={timezone} followUps={lead.lead_follow_ups ?? []} disabled={isTrialExpired} />
                     {"lead_notes" in lead && Array.isArray(lead.lead_notes) && lead.lead_notes.length ? (
                       <div className="space-y-1 rounded-md bg-slate-50 p-2">
                         {lead.lead_notes.slice(0, 4).map((note: { id: string; note: string; created_at?: string }) => (
@@ -242,7 +288,7 @@ export default async function DashboardPage() {
                   </td>
                 </tr>
               ))}
-              {!leads.length ? (
+              {!visibleLeads.length ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
                     No leads yet. Share your public page to start receiving enquiries.
@@ -252,6 +298,7 @@ export default async function DashboardPage() {
             </tbody>
           </table>
         </div>
+        <LeadPagination page={page} pageSize={pageSize} count={filteredLeads.length} query={filterValues} />
       </section>
     </div>
   );

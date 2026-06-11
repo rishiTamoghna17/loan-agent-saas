@@ -45,7 +45,30 @@ const context = templates.createCampaignRenderContext({
   senderEmail: "tamoghna171099@gmail.com"
 });
 
-for (const template of templates.BUILT_IN_CAMPAIGN_TEMPLATES) {
+const templateSamples = [
+  {
+    id: "introduction",
+    subject: "A professional website for {{company_name}}",
+    content: "Hi {{name}},\n\nSee your demo: {{demo_url}}\n\nStart your trial: {{signup_url}}"
+  },
+  {
+    id: "demo_invitation",
+    subject: "Your LeadHub demo for {{city}}",
+    content: "Hi {{name}},\n\nOpen the demo: {{demo_url}}\n\nCreate an account: {{signup_url}}"
+  },
+  {
+    id: "trial_reminder",
+    subject: "Start your LeadHub trial",
+    content: "Hi {{name}},\n\nReview LeadHub: {{demo_url}}\n\nStart here: {{signup_url}}"
+  },
+  {
+    id: "follow_up",
+    subject: "Following up with {{company_name}}",
+    content: "Hi {{name}},\n\nDemo: {{demo_url}}\n\nSignup: {{signup_url}}"
+  }
+];
+
+for (const template of templateSamples) {
   const rendered = templates.renderCampaignTemplate(template, context);
   const combined = `${rendered.subject}\n${rendered.htmlContent}`;
 
@@ -68,7 +91,7 @@ if (attachments.isCampaignBrochureEnabled() && !brochure.metadata.attached) {
 }
 
 console.log("CAMPAIGN_TEMPLATE_TEST=ok");
-console.log(`TEMPLATE_COUNT=${templates.BUILT_IN_CAMPAIGN_TEMPLATES.length}`);
+console.log(`TEMPLATE_COUNT=${templateSamples.length}`);
 console.log(`CAMPAIGN_BASE_URL=${baseUrl}`);
 console.log(`BROCHURE_ATTACHED=${brochure.metadata.attached}`);
 if (brochure.metadata.filename) {

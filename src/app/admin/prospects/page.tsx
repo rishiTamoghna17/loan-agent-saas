@@ -1,10 +1,14 @@
 import { ProspectImport } from "@/components/admin/prospect-import";
 import { AddProspectForm } from "@/components/admin/add-prospect-form";
-import { ReusableProspectTable } from "@/components/admin/reusable-prospect-table";
+import { ProspectsTableManager } from "@/components/admin/prospects-table-manager";
+import Link from "next/link";
 import { getProspects } from "@/app/admin/actions";
 import { 
   Search 
 } from "lucide-react";
+
+const engagementOptions = ["sent", "delivered", "opened", "clicked", "replied", "failed", "any"] as const;
+const sortOptions = ["created_at", "name", "lead_score", "status", "city"] as const;
 
 export default async function ProspectsPage({
   searchParams,
@@ -14,23 +18,38 @@ export default async function ProspectsPage({
   const statusFilter = searchParams.status as string;
   const cityFilter = searchParams.city as string;
   const query = searchParams.q as string;
-  const engagementFilter = searchParams.engagement as string;
+  const engagementParam = searchParams.engagement as string;
+  const engagementFilter = engagementOptions.includes(engagementParam as typeof engagementOptions[number])
+    ? engagementParam as typeof engagementOptions[number]
+    : undefined;
   const page = parseInt(searchParams.page as string) || 1;
+  const requestedPageSize = parseInt(searchParams.pageSize as string) || 20;
+  const sortParam = searchParams.sortBy as string;
+  const sortBy = sortOptions.includes(sortParam as typeof sortOptions[number])
+    ? sortParam as typeof sortOptions[number]
+    : "lead_score";
+  const sortDirection = searchParams.sortDirection === "asc" ? "asc" : "desc";
+  const view = searchParams.view === "archived" || searchParams.view === "deleted" ? searchParams.view : "active";
 
   const { 
     prospects, 
     count, 
     totalPages,
-    pageSize
+    pageSize,
+    currentPage
   } = await getProspects({
     page,
+    pageSize: requestedPageSize,
     status: statusFilter,
     city: cityFilter,
     query,
-    engagement: engagementFilter as any
+    engagement: engagementFilter,
+    sortBy,
+    sortDirection,
+    view
   });
 
-  const from = (page - 1) * pageSize;
+  const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
 
   return (
@@ -49,6 +68,13 @@ export default async function ProspectsPage({
           <AddProspectForm />
         </div>
       </div>
+      <div className="mb-6 flex gap-2 border-b border-slate-200">
+        {(["active", "archived", "deleted"] as const).map((item) => (
+          <Link key={item} href={`/admin/prospects?view=${item}`} className={`border-b-2 px-4 py-2 text-sm font-semibold capitalize ${view === item ? "border-brand-blue text-brand-blue" : "border-transparent text-slate-500"}`}>
+            {item}
+          </Link>
+        ))}
+      </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-1">
@@ -57,6 +83,10 @@ export default async function ProspectsPage({
           <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-ink">Filters</h2>
             <form className="space-y-4">
+              <input type="hidden" name="pageSize" value={pageSize} />
+              <input type="hidden" name="sortBy" value={sortBy} />
+              <input type="hidden" name="sortDirection" value={sortDirection} />
+              <input type="hidden" name="view" value={view} />
               <div>
                 <label className="text-sm font-medium text-slate-700">Search</label>
                 <div className="relative mt-1">
@@ -87,6 +117,7 @@ export default async function ProspectsPage({
                   <option value="demo_requested">Demo Requested</option>
                   <option value="trial_started">Trial Started</option>
                   <option value="converted">Converted</option>
+                  <option value="lost">Lost</option>
                 </select>
               </div>
 
@@ -99,9 +130,12 @@ export default async function ProspectsPage({
                 >
                   <option value="">All Prospects</option>
                   <option value="any">Any Engagement</option>
+                  <option value="sent">Email Sent</option>
+                  <option value="delivered">Email Delivered</option>
                   <option value="opened">Opened Email</option>
                   <option value="clicked">Clicked Link</option>
                   <option value="replied">Replied</option>
+                  <option value="failed">Failed or Bounced</option>
                 </select>
               </div>
 
@@ -113,14 +147,18 @@ export default async function ProspectsPage({
         </div>
 
         <div className="lg:col-span-2">
-          <ReusableProspectTable 
+          <ProspectsTableManager
             prospects={prospects}
             from={from}
             to={to}
             count={count}
             totalPages={totalPages}
-            currentPage={page}
-            showDelete={true}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            sortBy={sortBy}
+            sortDirection={sortDirection}
+            showDelete={view === "active"}
+            view={view}
           />
         </div>
       </div>

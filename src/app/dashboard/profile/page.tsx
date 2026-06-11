@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { updateProfile } from "../actions";
+import { updateNotificationPreferences, updateProfile } from "../actions";
 import { PincodeAddressFields } from "@/components/address/pincode-address-fields";
 import { PhoneWhatsappFields } from "@/components/dashboard/phone-whatsapp-fields";
 import { ServicesOfferedFields } from "@/components/dashboard/services-offered-fields";
@@ -17,6 +17,11 @@ export default async function ProfilePage() {
 
   const { data: agent } = await supabase.from("agents").select("*").eq("user_id", user.id).single();
   if (!agent) redirect("/signup");
+  const { data: preferences } = await supabase
+    .from("agent_notification_preferences")
+    .select("*")
+    .eq("agent_id", agent.id)
+    .maybeSingle();
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-8">
@@ -92,6 +97,37 @@ export default async function ProfilePage() {
         <div className="mt-6">
           <PendingButton pendingText="Saving profile...">Save profile</PendingButton>
         </div>
+      </form>
+
+      <form action={updateNotificationPreferences} className="card mt-6 p-6">
+        <h2 className="text-xl font-bold text-ink">Email notifications</h2>
+        <p className="mt-1 text-sm text-slate-600">Choose which LeadHub updates arrive in your inbox.</p>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-4">
+            <input name="new_lead_email_enabled" type="checkbox" defaultChecked={preferences?.new_lead_email_enabled ?? true} className="mt-1" />
+            <span><span className="block font-semibold text-ink">New lead emails</span><span className="text-sm text-slate-500">Receive an email immediately after a new enquiry.</span></span>
+          </label>
+          <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-4">
+            <input name="overdue_digest_email_enabled" type="checkbox" defaultChecked={preferences?.overdue_digest_email_enabled ?? true} className="mt-1" />
+            <span><span className="block font-semibold text-ink">Overdue follow-up digest</span><span className="text-sm text-slate-500">Receive one daily email with overdue tasks.</span></span>
+          </label>
+          <label>
+            <span className="label">Timezone</span>
+            <select name="timezone" className="field" defaultValue={preferences?.timezone ?? "Asia/Kolkata"}>
+              <option value="Asia/Kolkata">India - Asia/Kolkata</option>
+              <option value="Asia/Dubai">UAE - Asia/Dubai</option>
+              <option value="Europe/London">UK - Europe/London</option>
+              <option value="America/New_York">US Eastern - America/New_York</option>
+            </select>
+          </label>
+          <label>
+            <span className="label">Daily digest hour</span>
+            <select name="digest_hour" className="field" defaultValue={String(preferences?.digest_hour ?? 9)}>
+              {Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{String(hour).padStart(2, "0")}:00</option>)}
+            </select>
+          </label>
+        </div>
+        <PendingButton className="mt-5 btn-primary" pendingText="Saving notifications...">Save notification settings</PendingButton>
       </form>
     </div>
   );

@@ -14,7 +14,10 @@ import {
   MousePointerClick,
   MessageSquare,
   Send,
-  Search
+  Search,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -49,6 +52,9 @@ interface ReusableProspectTableProps {
   count?: number | null;
   totalPages?: number;
   currentPage?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
   showCheckboxes?: boolean;
   selectedIds?: string[];
   onSelectIds?: (ids: string[]) => void;
@@ -64,6 +70,9 @@ export function ReusableProspectTable({
   count,
   totalPages,
   currentPage = 1,
+  pageSize = 20,
+  sortBy,
+  sortDirection = "desc",
   showCheckboxes = false,
   selectedIds = [],
   onSelectIds,
@@ -118,6 +127,35 @@ export function ReusableProspectTable({
     return newParams.toString();
   };
 
+  const navigateWithQuery = (params: Record<string, string | number | undefined>) => {
+    router.push(`${pathname}?${buildQueryString(params)}`);
+  };
+
+  const sortableHeader = (label: string, field: string) => {
+    if (!sortBy) {
+      return <span>{label}</span>;
+    }
+
+    const isActive = sortBy === field;
+    const Icon = isActive ? (sortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+    return (
+      <button
+        type="button"
+        onClick={() => navigateWithQuery({
+          sortBy: field,
+          sortDirection: isActive && sortDirection === "asc" ? "desc" : "asc",
+          page: 1
+        })}
+        className="inline-flex items-center gap-1.5 transition hover:text-brand-blue focus:outline-none focus:text-brand-blue"
+        title={`Sort by ${label}`}
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${isActive ? "text-brand-blue" : "text-slate-300"}`} />
+      </button>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {enableSearch && (
@@ -156,10 +194,10 @@ export function ReusableProspectTable({
                   </th>
                 )}
                 <th className="px-6 py-4 w-12 text-center bg-slate-50">#</th>
-                <th className="px-6 py-4 bg-slate-50">Prospect</th>
-                <th className="px-6 py-4 bg-slate-50">Score</th>
-                <th className="px-6 py-4 bg-slate-50">Status</th>
-                <th className="px-6 py-4 bg-slate-50">Location</th>
+                <th className="px-6 py-4 bg-slate-50">{sortableHeader("Prospect", "name")}</th>
+                <th className="px-6 py-4 bg-slate-50">{sortableHeader("Score", "lead_score")}</th>
+                <th className="px-6 py-4 bg-slate-50">{sortableHeader("Status", "status")}</th>
+                <th className="px-6 py-4 bg-slate-50">{sortableHeader("Location", "city")}</th>
                 <th className="px-6 py-4 bg-slate-50">Email History</th>
                 {showDelete && (
                   <th className="px-6 py-4 bg-slate-50">Actions</th>
@@ -259,23 +297,51 @@ export function ReusableProspectTable({
           </table>
         </div>
         
-        {totalPages && totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 mt-auto">
+        {typeof count === "number" && typeof totalPages === "number" && (
+          <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between mt-auto">
             <div className="text-xs font-medium text-slate-500">
-              Showing <span className="text-ink">{from + 1}</span> to <span className="text-ink">{Math.min((to || 0) + 1, count || 0)}</span> of <span className="text-ink">{count}</span>
+              Showing <span className="text-ink">{count > 0 ? from + 1 : 0}</span> to <span className="text-ink">{Math.min((to || 0) + 1, count)}</span> of <span className="text-ink">{count}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                Rows
+                <select
+                  aria-label="Rows per page"
+                  value={pageSize}
+                  onChange={(event) => navigateWithQuery({ pageSize: event.target.value, page: 1 })}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs focus:border-brand-blue focus:outline-none"
+                >
+                  {[10, 20, 25, 50, 100].map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </label>
               <a
                 href={`${pathname}?${buildQueryString({ page: currentPage - 1 })}`}
+                aria-label="Previous page"
                 className={`flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 ${currentPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
               >
                 <ChevronLeft className="h-4 w-4" />
               </a>
-              <div className="text-xs font-semibold text-slate-600">
-                Page {currentPage} of {totalPages}
-              </div>
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                Page
+                <select
+                  aria-label="Page number"
+                  value={totalPages > 0 ? currentPage : 0}
+                  disabled={totalPages === 0}
+                  onChange={(event) => navigateWithQuery({ page: event.target.value })}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs focus:border-brand-blue focus:outline-none disabled:opacity-50"
+                >
+                  {totalPages === 0 ? <option value={0}>0</option> : null}
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                    <option key={pageNumber} value={pageNumber}>{pageNumber}</option>
+                  ))}
+                </select>
+                <span>of {totalPages}</span>
+              </label>
               <a
                 href={`${pathname}?${buildQueryString({ page: currentPage + 1 })}`}
+                aria-label="Next page"
                 className={`flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 ${currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
               >
                 <ChevronRight className="h-4 w-4" />

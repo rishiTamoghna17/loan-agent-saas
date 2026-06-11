@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const supabase = createClient();
   const { data: agent, error: agentError } = await supabase
     .from("agents")
-    .select("id,agent_name,business_name,email")
+    .select("id,agent_name,business_name,email,agent_notification_preferences(new_lead_email_enabled)")
     .eq("id", agentId)
     .single();
 
@@ -63,9 +63,10 @@ export async function POST(request: Request) {
     metadata: { source: values.source, loan_type: values.loan_type }
   });
 
+  const preferences = Array.isArray(agent.agent_notification_preferences) ? agent.agent_notification_preferences[0] : agent.agent_notification_preferences;
   try {
     const origin = new URL(request.url).origin;
-    await sendNewLeadEmail({
+    if (preferences?.new_lead_email_enabled ?? true) await sendNewLeadEmail({
       agentEmail: agent.email,
       agentName: agent.agent_name,
       businessName: agent.business_name,

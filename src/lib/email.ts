@@ -14,6 +14,15 @@ type LeadNotification = {
   dashboardUrl: string;
 };
 
+type OverdueDigestInput = {
+  agentEmail: string;
+  agentName: string;
+  businessName: string;
+  dashboardUrl: string;
+  timezone: string;
+  followUps: Array<{ leadName: string; phone: string; loanType: string; dueAt: string; note?: string | null }>;
+};
+
 function getTransporter() {
   const host = process.env.BREVO_SMTP_HOST;
   const port = Number(process.env.BREVO_SMTP_PORT || 587);
@@ -76,6 +85,40 @@ export async function sendNewLeadEmail(input: LeadNotification) {
         <p style="margin-top:20px">
           <a href="${input.dashboardUrl}" style="background:#1769ff;color:#fff;padding:11px 16px;border-radius:8px;text-decoration:none;font-weight:700">Open LeadHub dashboard</a>
         </p>
+      </div>
+    `
+  });
+}
+
+export async function sendOverdueFollowUpDigest(input: OverdueDigestInput) {
+  const transporter = getTransporter();
+  const senderEmail = process.env.BREVO_SMTP_SENDER_EMAIL;
+  const senderName = process.env.BREVO_SMTP_SENDER_NAME || "LeadHub";
+  if (!transporter || !senderEmail) throw new Error("SMTP is not configured.");
+
+  const items = input.followUps.map((item) => `
+    <tr>
+      <td style="border:1px solid #dbe6f3;padding:10px">${escapeHtml(item.leadName)}</td>
+      <td style="border:1px solid #dbe6f3;padding:10px">${escapeHtml(item.phone)}</td>
+      <td style="border:1px solid #dbe6f3;padding:10px">${escapeHtml(item.loanType)}</td>
+      <td style="border:1px solid #dbe6f3;padding:10px">${escapeHtml(new Intl.DateTimeFormat("en-IN", { timeZone: input.timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(item.dueAt)))}</td>
+    </tr>
+  `).join("");
+
+  return transporter.sendMail({
+    from: `"${senderName}" <${senderEmail}>`,
+    to: input.agentEmail,
+    subject: `${input.followUps.length} overdue follow-up${input.followUps.length === 1 ? "" : "s"} - LeadHub`,
+    text: `Hi ${input.agentName},\n\nYou have ${input.followUps.length} overdue follow-ups. Open your dashboard: ${input.dashboardUrl}`,
+    html: `
+      <div style="font-family:Inter,Arial,sans-serif;line-height:1.6;color:#0f172a">
+        <h2 style="margin:0 0 8px">Overdue follow-ups</h2>
+        <p style="color:#475569">Hi ${escapeHtml(input.agentName)}, ${escapeHtml(input.businessName)} has ${input.followUps.length} follow-up${input.followUps.length === 1 ? "" : "s"} requiring attention.</p>
+        <table style="border-collapse:collapse;width:100%;max-width:720px">
+          <tr style="background:#f8fafc"><th style="padding:10px;text-align:left">Lead</th><th style="padding:10px;text-align:left">Phone</th><th style="padding:10px;text-align:left">Loan</th><th style="padding:10px;text-align:left">Due</th></tr>
+          ${items}
+        </table>
+        <p style="margin-top:20px"><a href="${input.dashboardUrl}" style="background:#1769ff;color:#fff;padding:11px 16px;border-radius:8px;text-decoration:none;font-weight:700">Open LeadHub dashboard</a></p>
       </div>
     `
   });

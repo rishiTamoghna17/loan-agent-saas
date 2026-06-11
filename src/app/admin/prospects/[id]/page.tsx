@@ -6,18 +6,26 @@ import { getProspect, getProspectEmailHistory } from "@/app/admin/actions";
 // Temporary fix: If the component is meant to be created here's the correct import once the file exists:
 import { ProspectDetailClient } from "@/components/admin/prospect-detail-client";
 
-export default async function ProspectDetailPage({ 
-  params 
+export default async function ProspectDetailPage({
+  params,
+  searchParams
 }: { 
-  params: { id: string } 
+  params: { id: string };
+  searchParams: Record<string, string | undefined>;
 }) {
   const prospect = await getProspect(params.id);
-  const emailHistory = await getProspectEmailHistory(params.id);
+  const emailHistory = await getProspectEmailHistory(params.id, {
+    status: searchParams.status,
+    template: searchParams.template,
+    from: searchParams.from,
+    to: searchParams.to
+  });
 
   return (
     <ProspectDetailClient 
       prospect={prospect} 
       emailHistory={emailHistory} 
+      historyFilters={searchParams}
     />
   );
 }

@@ -22,7 +22,11 @@ export function normalizeBrevoMessageId(value: unknown) {
 
 export function getBrevoEventType(value: unknown) {
   if (typeof value !== "string") return "";
-  return value.trim().toLowerCase().replace(/-/g, "_");
+  return value
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
 }
 
 export function maskProviderError(value: unknown): Json {
@@ -52,4 +56,3 @@ export function hasCampaignEvent(history: unknown, eventType: string) {
     return (event as Record<string, unknown>).event_type === eventType;
   });
 }
-

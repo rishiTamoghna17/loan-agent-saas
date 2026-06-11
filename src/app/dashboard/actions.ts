@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { uploadAgentLogoWithClient } from "@/lib/logo-upload";
-import { deleteLeadSchema, leadNoteSchema, leadStatusSchema, profileSchema } from "@/lib/schemas";
+import { deleteLeadSchema, followUpSchema, followUpStatusSchema, leadNoteSchema, leadStatusSchema, notificationPreferencesSchema, profileSchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
+import { zonedDateTimeToUtc } from "@/lib/follow-ups";
 
 async function requireAgent() {
   const supabase = createClient();
@@ -65,6 +66,55 @@ export async function deleteLead(formData: FormData) {
   if (isDashboardLocked(agent)) return;
   await supabase.from("leads").delete().eq("id", parsed.data.lead_id).eq("agent_id", agent.id);
   revalidatePath("/dashboard");
+}
+
+export async function saveFollowUp(formData: FormData) {
+  const dueAt = String(formData.get("due_at") || "");
+  const timezone = String(formData.get("timezone") || "Asia/Kolkata");
+  const parsed = followUpSchema.safeParse({
+    id: formData.get("id") || undefined,
+    lead_id: formData.get("lead_id"),
+    due_at: dueAt ? zonedDateTimeToUtc(dueAt, timezone) : "",
+    note: formData.get("note")
+  });
+  if (!parsed.success) return;
+
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return;
+  const values = { lead_id: parsed.data.lead_id, agent_id: agent.id, due_at: parsed.data.due_at, note: parsed.data.note || null, status: "pending" };
+  if (parsed.data.id) {
+    await supabase.from("lead_follow_ups").update(values).eq("id", parsed.data.id).eq("agent_id", agent.id);
+  } else {
+    await supabase.from("lead_follow_ups").insert(values);
+  }
+  await supabase.from("leads").update({ status: "follow_up" }).eq("id", parsed.data.lead_id).eq("agent_id", agent.id);
+  revalidatePath("/dashboard");
+}
+
+export async function updateFollowUpStatus(formData: FormData) {
+  const parsed = followUpStatusSchema.safeParse({ id: formData.get("id"), status: formData.get("status") });
+  if (!parsed.success) return;
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return;
+  await supabase.from("lead_follow_ups").update({
+    status: parsed.data.status,
+    completed_at: parsed.data.status === "completed" ? new Date().toISOString() : null
+  }).eq("id", parsed.data.id).eq("agent_id", agent.id);
+  revalidatePath("/dashboard");
+}
+
+export async function updateNotificationPreferences(formData: FormData) {
+  const parsed = notificationPreferencesSchema.safeParse({
+    timezone: formData.get("timezone"),
+    digest_hour: formData.get("digest_hour"),
+    new_lead_email_enabled: formData.get("new_lead_email_enabled") === "on",
+    overdue_digest_email_enabled: formData.get("overdue_digest_email_enabled") === "on"
+  });
+  if (!parsed.success) return;
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return;
+  await supabase.from("agent_notification_preferences").upsert({ agent_id: agent.id, ...parsed.data }, { onConflict: "agent_id" });
+  revalidatePath("/dashboard/profile");
 }
 
 export async function updateProfile(formData: FormData) {

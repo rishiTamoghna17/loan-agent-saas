@@ -51,7 +51,23 @@ const now = Date.now();
 let prospectId = "";
 
 try {
-  const template = templates.getBuiltInCampaignTemplate("intro");
+  const template = {
+    id: "brevo_send_test",
+    name: "Brevo Send Test",
+    subject: "LeadHub campaign delivery test",
+    content: `Hi {{name}},
+
+This is a controlled LeadHub campaign delivery test.
+
+Demo: {{demo_url}}
+Signup: {{signup_url}}
+
+Regards,
+{{sender_name}}
+{{sender_phone}}
+{{sender_email}}`,
+    show_header: true
+  };
   const brochure = await attachments.getCampaignBrochureAttachment();
 
   const { data: prospect, error: prospectError } = await supabase

@@ -46,7 +46,7 @@ export function CampaignSender({
   
   const [isSending, setIsSending] = useState(false);
   const [templateId, setTemplateId] = useState<string | undefined>(allTemplates[0]?.id);
-  const [result, setResult] = useState<{ success: boolean; count?: number; failedCount?: number; error?: string } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; count?: number; failedCount?: number; error?: string; errorKind?: string } | null>(null);
   
   // Clear result when selection changes
   useEffect(() => {

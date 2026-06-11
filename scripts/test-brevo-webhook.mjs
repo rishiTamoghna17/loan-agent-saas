@@ -18,8 +18,10 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 const now = Date.now();
+const testStartedAt = new Date().toISOString();
 const email = `brevo-webhook-test-${now}@example.com`;
 const messageId = `brevo-webhook-test-${now}@mail.brevo.local`;
+const unmatchedMessageId = `brevo-webhook-unmatched-${now}@mail.brevo.local`;
 let prospectId = "";
 
 try {
@@ -56,7 +58,17 @@ try {
   if (campaignError) throw campaignError;
 
   const webhookUrl = `${baseUrl}/api/webhooks/brevo?secret=${encodeURIComponent(webhookSecret)}`;
-  const events = ["delivered", "opened", "clicked"];
+  const unauthorizedResponse = await fetch(`${baseUrl}/api/webhooks/brevo`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ event: "delivered", "message-id": `<${messageId}>`, email })
+  });
+
+  if (unauthorizedResponse.status !== 401) {
+    throw new Error(`Webhook unauthorized check failed: HTTP ${unauthorizedResponse.status}`);
+  }
+
+  const events = ["delivered", "opened", "opened", "clicked", "hard_bounce"];
 
   for (const event of events) {
     const response = await fetch(webhookUrl, {
@@ -75,9 +87,24 @@ try {
     }
   }
 
+  const unmatchedResponse = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      event: "delivered",
+      "message-id": `<${unmatchedMessageId}>`,
+      email,
+      ts: Math.floor(Date.now() / 1000)
+    })
+  });
+
+  if (!unmatchedResponse.ok) {
+    throw new Error(`Webhook unmatched check failed: HTTP ${unmatchedResponse.status} ${await unmatchedResponse.text()}`);
+  }
+
   const { data: updatedCampaign, error: updatedCampaignError } = await supabase
     .from("email_campaigns")
-    .select("status, delivered_at, opened_at, clicked_at, event_history")
+    .select("status, delivered_at, opened_at, clicked_at, bounced_at, event_history")
     .eq("id", campaign.id)
     .single();
 
@@ -91,30 +118,49 @@ try {
 
   if (updatedProspectError) throw updatedProspectError;
 
+  const { data: auditEvents, error: auditError } = await supabase
+    .from("email_webhook_events")
+    .select("message_id, event_type, processing_status, unmatched_reason")
+    .gte("received_at", testStartedAt)
+    .or(`message_id.eq.${messageId},message_id.eq.${unmatchedMessageId},message_id.is.null`);
+
+  if (auditError) throw auditError;
+
+  const statuses = auditEvents.map((event) => event.processing_status);
   const passed =
-    updatedCampaign.status === "clicked" &&
+    updatedCampaign.status === "bounced" &&
     updatedCampaign.delivered_at &&
     updatedCampaign.opened_at &&
     updatedCampaign.clicked_at &&
+    updatedCampaign.bounced_at &&
     Number(updatedProspect.lead_score) === 30 &&
-    updatedProspect.status === "clicked";
+    updatedProspect.status === "clicked" &&
+    statuses.includes("processed") &&
+    statuses.includes("duplicate") &&
+    statuses.includes("unmatched") &&
+    statuses.includes("failed");
 
   if (!passed) {
     console.error("BREVO_WEBHOOK_TEST=failed");
-    console.error(JSON.stringify({ updatedCampaign, updatedProspect }, null, 2));
+    console.error(JSON.stringify({ updatedCampaign, updatedProspect, auditEvents }, null, 2));
     process.exit(2);
   }
 
   console.log("BREVO_WEBHOOK_TEST=ok");
   console.log(`CAMPAIGN_STATUS=${updatedCampaign.status}`);
   console.log(`PROSPECT_SCORE=${updatedProspect.lead_score}`);
+  console.log(`AUDIT_EVENTS=${auditEvents.length}`);
 } catch (error) {
   console.error("BREVO_WEBHOOK_TEST=failed");
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 } finally {
+  await supabase
+    .from("email_webhook_events")
+    .delete()
+    .gte("received_at", testStartedAt)
+    .or(`message_id.eq.${messageId},message_id.eq.${unmatchedMessageId},message_id.is.null`);
   if (prospectId) {
     await supabase.from("prospects").delete().eq("id", prospectId);
   }
 }
-

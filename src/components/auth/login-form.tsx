@@ -12,7 +12,7 @@ import type { z } from "zod";
 
 type LoginInput = z.infer<typeof loginSchema>;
 
-export function LoginForm({ redirectedFrom, email }: { redirectedFrom?: string; email?: string }) {
+export function LoginForm({ redirectedFrom, email, passwordUpdated = false }: { redirectedFrom?: string; email?: string; passwordUpdated?: boolean }) {
   const router = useRouter();
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,6 +43,7 @@ export function LoginForm({ redirectedFrom, email }: { redirectedFrom?: string; 
         <h1 className="text-2xl font-bold text-ink">Login</h1>
         <p className="mt-2 text-sm text-slate-600">Open your loan lead dashboard.</p>
         {email ? <p className="mt-2 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">Account created. Confirm your email, then log in.</p> : null}
+        {passwordUpdated ? <p className="mt-2 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">Password updated. Log in with your new password.</p> : null}
       </div>
 
       <div className="mt-6 space-y-4">
@@ -52,7 +53,7 @@ export function LoginForm({ redirectedFrom, email }: { redirectedFrom?: string; 
           <p className="mt-1 text-sm text-red-600">{form.formState.errors.email?.message}</p>
         </div>
         <div>
-          <label className="label" htmlFor="password">Password</label>
+          <div className="flex items-center justify-between"><label className="label" htmlFor="password">Password</label><Link href="/forgot-password" className="text-xs font-semibold text-brand-blue">Forgot password?</Link></div>
           <input id="password" type="password" className="field" {...form.register("password")} />
           <p className="mt-1 text-sm text-red-600">{form.formState.errors.password?.message}</p>
         </div>

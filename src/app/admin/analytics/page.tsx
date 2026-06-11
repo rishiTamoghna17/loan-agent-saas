@@ -12,7 +12,7 @@ export default async function AnalyticsPage() {
   const supabase = await getAdminSupabase();
 
   // Fetch stats for rates
-  const { count: totalSent } = await supabase.from("email_campaigns").select("*", { count: "exact", head: true });
+  const { count: totalSent } = await supabase.from("email_campaigns").select("*", { count: "exact", head: true }).not("email_sent_at", "is", null);
   const { count: totalOpened } = await supabase.from("email_campaigns").select("*", { count: "exact", head: true }).not("opened_at", "is", null);
   const { count: totalClicked } = await supabase.from("email_campaigns").select("*", { count: "exact", head: true }).not("clicked_at", "is", null);
   const { count: totalReplied } = await supabase.from("email_campaigns").select("*", { count: "exact", head: true }).not("replied_at", "is", null);

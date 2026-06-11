@@ -63,6 +63,8 @@ try {
   await assertTenantLeadIsolation(agentAClient, agentBClient, publicLeadForA.id, publicLeadForB.id);
   await assertTenantLeadMutations(agentAClient, agentBClient, publicLeadForA.id, publicLeadForB.id);
   await assertLeadNotesIsolation(agentAClient, agentBClient, agentA.id, publicLeadForA.id);
+  await assertFollowUpIsolation(agentAClient, agentBClient, agentA.id, publicLeadForA.id);
+  await assertNotificationPreferenceIsolation(agentAClient, agentBClient, agentA.id, agentB.id);
 
   console.log("All Supabase DB/RLS tests passed.");
 } catch (error) {
@@ -231,6 +233,42 @@ async function assertLeadNotesIsolation(agentAClient, agentBClient, agentAId, le
   const { data: notesForB, error: notesForBError } = await agentBClient.from("lead_notes").select("id").eq("id", note.id);
   assertNoError(notesForBError, "agent B lead note query does not error");
   assert(notesForB.length === 0, "agent B cannot read agent A lead note");
+}
+
+async function assertFollowUpIsolation(agentAClient, agentBClient, agentAId, leadAId) {
+  const { data: task, error } = await agentAClient.from("lead_follow_ups").insert({
+    agent_id: agentAId,
+    lead_id: leadAId,
+    due_at: new Date(Date.now() + 86_400_000).toISOString(),
+    note: "Tenant isolation test"
+  }).select("id,status").single();
+  assertNoError(error, "agent A can schedule own follow-up");
+  assert(task?.status === "pending", "new follow-up defaults to pending");
+
+  const { data: otherRead, error: otherReadError } = await agentBClient.from("lead_follow_ups").select("id").eq("id", task.id);
+  assertNoError(otherReadError, "cross-tenant follow-up read is filtered by RLS");
+  assert(otherRead.length === 0, "agent B cannot read agent A follow-up");
+
+  const { data: otherUpdate, error: otherUpdateError } = await agentBClient.from("lead_follow_ups").update({ status: "completed" }).eq("id", task.id).select("id");
+  assertNoError(otherUpdateError, "cross-tenant follow-up update is filtered by RLS");
+  assert(otherUpdate.length === 0, "agent B cannot update agent A follow-up");
+}
+
+async function assertNotificationPreferenceIsolation(agentAClient, agentBClient, agentAId, agentBId) {
+  const { data: own, error: ownError } = await agentAClient.from("agent_notification_preferences").update({
+    digest_hour: 11,
+    timezone: "Asia/Kolkata"
+  }).eq("agent_id", agentAId).select("agent_id,digest_hour");
+  assertNoError(ownError, "agent A can update own notification preferences");
+  assert(own.length === 1 && own[0].digest_hour === 11, "agent A own notification preferences changed");
+
+  const { data: other, error: otherError } = await agentAClient.from("agent_notification_preferences").update({ digest_hour: 15 }).eq("agent_id", agentBId).select("agent_id");
+  assertNoError(otherError, "cross-tenant preference update is filtered by RLS");
+  assert(other.length === 0, "agent A cannot update agent B notification preferences");
+
+  const { data: visible, error: visibleError } = await agentBClient.from("agent_notification_preferences").select("agent_id");
+  assertNoError(visibleError, "agent B can query notification preferences");
+  assert(visible.every((row) => row.agent_id === agentBId), "agent B sees only own notification preferences");
 }
 
 async function cleanup() {
