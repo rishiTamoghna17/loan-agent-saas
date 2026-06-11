@@ -26,7 +26,46 @@ const demoLeads = [
   { name: "Priya Mehta", loan: "Business Loan", amount: "₹12,00,000", source: "Referral", status: "Follow-up" },
   { name: "Arjun Verma", loan: "Car Loan", amount: "₹8,50,000", source: "Website", status: "Closed" }
 ];
+const problems = [
+  "Leads lost in WhatsApp chats",
+  "Missed follow-ups after a few days",
+  "No professional website",
+  "No lead tracking dashboard",
+  "No source tracking",
+  "No conversion visibility"
+];
 
+const followUpTasks = {
+  overdue: 5,
+  today: 7,
+  upcoming: 14
+};
+
+const leadSources = [
+  { source: "Google", count: 20 },
+  { source: "WhatsApp", count: 14 },
+  { source: "Referral", count: 8 },
+  { source: "Facebook", count: 6 }
+];
+
+const faqs = [
+  {
+    q: "Do I need technical knowledge?",
+    a: "No. LeadHub is designed for loan agents and DSAs with no technical setup required."
+  },
+  {
+    q: "Can I export my leads?",
+    a: "Yes. Export filtered leads anytime as CSV."
+  },
+  {
+    q: "How do follow-up reminders work?",
+    a: "Schedule tasks and receive reminder digests so no lead is forgotten."
+  },
+  {
+    q: "Can customers contact me on WhatsApp?",
+    a: "Yes. Every website includes WhatsApp contact actions."
+  }
+];
 export default function DemoPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-white">
@@ -61,7 +100,12 @@ export default function DemoPage() {
                   <MapPin className="h-4 w-4" />
                   Bengaluru, Karnataka
                 </p>
-                <h1 className="mt-1 text-4xl font-bold tracking-tight text-ink sm:text-6xl">Aarav Loan Solutions</h1>
+                <h1 className="mt-1 text-4xl font-bold tracking-tight text-ink sm:text-6xl">Your Loan Website + Lead CRM in One Dashboard</h1>
+                <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
+                  LeadHub helps loan agents and DSAs capture enquiries,
+                  schedule follow-ups, track every customer,
+                  and close more deals.
+                </p>
               </div>
             </div>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
@@ -102,6 +146,127 @@ export default function DemoPage() {
           </div>
         </div>
       </section>
+      <section className="mx-auto max-w-7xl px-4 py-14">
+  <div className="text-center">
+    <h2 className="text-3xl font-bold text-ink">
+      Are loan enquiries getting lost?
+    </h2>
+    <p className="mt-3 text-slate-600">
+      Most loan agents still manage leads through WhatsApp chats,
+      notebooks, and spreadsheets.
+    </p>
+  </div>
+
+  <div className="mt-10 grid gap-4 md:grid-cols-3">
+    {problems.map((problem) => (
+      <div
+        key={problem}
+        className="rounded-lg border border-slate-200 bg-white p-5"
+      >
+        <p className="font-medium text-slate-700">{problem}</p>
+      </div>
+    ))}
+  </div>
+</section>
+<section className="border-y border-slate-200 bg-slate-50 py-14">
+  <div className="mx-auto max-w-6xl px-4 text-center">
+    <h2 className="text-3xl font-bold text-ink">
+      How LeadHub Works
+    </h2>
+
+    <div className="mt-10 flex flex-col items-center justify-center gap-4 md:flex-row">
+      {[
+        "Loan Website",
+        "Lead Enquiry",
+        "Dashboard",
+        "Follow-up Task",
+        "Customer Conversion"
+      ].map((step, index) => (
+        <div
+          key={step}
+          className="flex items-center gap-4"
+        >
+          <div className="rounded-lg border border-slate-200 bg-white px-6 py-4 font-semibold">
+            {step}
+          </div>
+
+          {index !== 4 && (
+            <ArrowRight className="h-5 w-5 text-brand-blue" />
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+<section className="mx-auto max-w-7xl px-4 py-14">
+  <h2 className="text-3xl font-bold text-ink">
+    Follow-up Task Management
+  </h2>
+
+  <div className="mt-8 grid gap-4 md:grid-cols-3">
+    <div className="rounded-lg border border-red-200 bg-red-50 p-5">
+      <h3 className="font-bold text-red-700">Overdue</h3>
+      <p className="mt-2 text-4xl font-bold">
+        {followUpTasks.overdue}
+      </p>
+    </div>
+
+    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-5">
+      <h3 className="font-bold text-yellow-700">Due Today</h3>
+      <p className="mt-2 text-4xl font-bold">
+        {followUpTasks.today}
+      </p>
+    </div>
+
+    <div className="rounded-lg border border-green-200 bg-green-50 p-5">
+      <h3 className="font-bold text-green-700">Upcoming</h3>
+      <p className="mt-2 text-4xl font-bold">
+        {followUpTasks.upcoming}
+      </p>
+    </div>
+  </div>
+</section>
+<section className="border-y border-slate-200 bg-slate-50 py-14">
+  <div className="mx-auto max-w-7xl px-4">
+    <h2 className="text-3xl font-bold text-ink">
+      Analytics & Lead Sources
+    </h2>
+
+    <div className="mt-8 grid gap-4 md:grid-cols-4">
+      <div className="card p-5">
+        <p>Website Visits</p>
+        <h3 className="text-3xl font-bold">320</h3>
+      </div>
+
+      <div className="card p-5">
+        <p>Lead Submissions</p>
+        <h3 className="text-3xl font-bold">48</h3>
+      </div>
+
+      <div className="card p-5">
+        <p>WhatsApp Clicks</p>
+        <h3 className="text-3xl font-bold">86</h3>
+      </div>
+
+      <div className="card p-5">
+        <p>Conversion</p>
+        <h3 className="text-3xl font-bold">15%</h3>
+      </div>
+    </div>
+
+    <div className="mt-8 grid gap-4 md:grid-cols-4">
+      {leadSources.map((item) => (
+        <div
+          key={item.source}
+          className="rounded-lg border border-slate-200 bg-white p-5"
+        >
+          <p>{item.source}</p>
+          <h3 className="text-2xl font-bold">{item.count}</h3>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
 
       <section className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-5 md:grid-cols-3">
         {[
@@ -204,14 +369,32 @@ export default function DemoPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-4xl px-4 py-14 text-center sm:px-5">
-        <h2 className="text-3xl font-bold text-ink">Ready to launch your own loan website?</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-slate-600">Create your profile, choose your services, and start receiving organized enquiries with a 14-day free trial.</p>
-        <Link href="/signup" className="btn-primary mt-7">
-          Start your free trial
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </section>
+<section className="mx-auto max-w-5xl px-4 py-16 text-center">
+  <h2 className="text-4xl font-bold text-ink">
+    Ready to stop losing loan enquiries?
+  </h2>
+
+  <p className="mx-auto mt-4 max-w-3xl text-lg text-slate-600">
+    Get your own loan website, lead dashboard,
+    follow-up reminders, analytics, and WhatsApp CRM
+    in minutes.
+  </p>
+
+  <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+    <Link href="/signup" className="btn-primary">
+      Start Free 14-Day Trial
+      <ArrowRight className="h-4 w-4" />
+    </Link>
+
+    <a
+      href="https://wa.me/917001586476"
+      target="_blank"
+      className="btn-whatsapp"
+    >
+      Contact on WhatsApp
+    </a>
+  </div>
+</section>
     </main>
   );
 }
