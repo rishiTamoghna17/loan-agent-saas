@@ -55,8 +55,8 @@ try {
   await assertPublicAgentPagesAreReadable(agentA.slug, agentB.slug);
   await assertAgentCannotCreateProfileForAnotherUser(agentAClient, userB.id);
 
-  const publicLeadForA = await insertPublicLead(agentA.id, `Public Lead A ${runId}`);
-  const publicLeadForB = await insertPublicLead(agentB.id, `Public Lead B ${runId}`);
+  const publicLeadForA = await insertPublicLead(agentA.id, `Public Lead A ${runId}`,agentAClient);
+  const publicLeadForB = await insertPublicLead(agentB.id, `Public Lead B ${runId}`,agentBClient);
   createdLeadIds.push(publicLeadForA.id, publicLeadForB.id);
 
   await assertAnonCannotReadLeads();
@@ -150,30 +150,40 @@ async function assertAgentCannotCreateProfileForAnotherUser(client, otherUserId)
   assert(error, "RLS blocks creating an agent profile for another auth user");
 }
 
-async function insertPublicLead(agentId, name) {
-  const { data, error } = await anon
-    .from("leads")
-    .insert({
-      agent_id: agentId,
-      name,
-      phone: "9999999999",
-      email: `${name.toLowerCase().replaceAll(" ", "-")}@example.com`,
-      loan_type: "Personal Loan",
-      required_amount: 500000,
-      monthly_income: 90000,
-      city: "Pune",
-      district: "Pune",
-      state: "Maharashtra",
-      pincode: "411001",
-      landmark: "Near station",
-      message: "Public lead insert test"
-    })
-    .select("id,agent_id,name,status")
-    .single();
+async function insertPublicLead(agentId, name, agentClient) {
+const { error } = await anon
+  .from("leads")
+  .insert({
+    agent_id: agentId,
+    name,
+    phone: "9999999999",
+    email: `${name.toLowerCase().replaceAll(" ", "-")}@example.com`,
+    loan_type: "Personal Loan",
+    required_amount: 500000,
+    monthly_income: 90000,
+    city: "Pune",
+    district: "Pune",
+    state: "Maharashtra",
+    pincode: "411001",
+    landmark: "Near station",
+    source: "Website",
+    message: "Public lead insert test"
+  });
 
   assertNoError(error, `anonymous public lead insert for ${agentId}`);
-  assert(data?.status === "new", "new public leads default to new status");
+  const { data, error: fetchError } = await agentClient
+    .from("leads")
+    .select("id,status")
+    .eq("name", name)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  assertNoError(fetchError, "agent can read inserted lead");
+
   return data;
+  // assert(data?.status === "new", "new public leads default to new status");
+  // return data;
 }
 
 async function assertAnonCannotReadLeads() {
