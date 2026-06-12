@@ -1,0 +1,92 @@
+# LeadHub Prospects Import Template
+
+This CSV file contains sample data for importing prospects into LeadHub. You can use either the **Simple Format** (columns 1-8) or the **DSA Prospect Format** (columns 1-17).
+
+## Simple Format (Recommended for Basic Imports)
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| `name` | Contact person's full name | `Aarav Patel` |
+| `email` | Email address (required) | `aarav.patel@example.com` |
+| `phone` | Phone number | `9876543210` |
+| `city` | City location | `Mumbai` |
+| `company_name` | Company/Business name | `Patel Construction` |
+| `loan_category` | Type of loan needed | `Home Loan` |
+| `status` | Initial status (default: `new`) | `new` |
+| `lead_score` | Lead scoring (default: `0`) | `0` |
+
+### Simple Format CSV Example:
+
+```csv
+name,email,phone,city,company_name,loan_category,status,lead_score
+"Aarav Patel","aarav.patel@example.com","9876543210","Mumbai","Patel Construction","Home Loan",new,0
+"Diya Sharma","diya.sharma@example.com","9876543211","Delhi","Sharma Enterprises","Personal Loan",new,0
+"Rohan Gupta","rohan.gupta@example.com","9876543212","Bangalore","Gupta Tech Solutions","Business Loan",new,0
+```
+
+---
+
+## DSA Prospect Format (Advanced)
+
+This format is designed for importing DSA (Direct Selling Agent) or financial adviser prospects.
+
+| Column | Description |
+|--------|-------------|
+| `City` | City location |
+| `Business Name` | Business/company name |
+| `Contact Person` | Name of contact person |
+| `Public Phone` | Public phone number |
+| `WhatsApp Number` | WhatsApp contact number |
+| `Public Email` | Public email address |
+| `Website` | Business website URL |
+| `Loan Categories` | Services offered (semicolon-separated) |
+| `Company Size Signal` | Company size indicator |
+| `Size Confidence` | Confidence level (Medium/Low/High) |
+| `Contact Verification` | How contact was verified |
+| `Research Channel` | Source of prospect data |
+| `Primary Source URL` | Link to prospect profile |
+| `Secondary Source URL` | Additional link |
+| `LeadHub Fit Notes` | Qualification notes |
+| `Researched On` | Research date |
+
+### DSA Format CSV Example:
+
+```csv
+City,Business Name,Contact Person,Public Phone,WhatsApp Number,Public Email,Website,Loan Categories,Company Size Signal,Size Confidence,Contact Verification,Research Channel,Primary Source URL,Secondary Source URL,LeadHub Fit Notes,Researched On
+Mumbai,abc investment services,,9757163532,,sudhirbatcha@gmail.com,,Education Loan; General Insurance; Gold Loan; Home Loan; Life Insurance; Loan Against Property; Mutual Fund; Personal Loan,"Independent public financial-adviser profile; BSC, NPC / Exp. 2 yrs",Medium,Public directory phone/email,Referral directory / Advisorkhoj,https://www.advisorkhoj.com/Mumbai/Education-Loan-Advisor,,Contactable independent adviser prospect; verify current services and team size before outreach,2026-06-09
+Mumbai,abhishek mehta,Abhishek Mehta,9823962817,,hello@investza.in,,Home Loan; Mutual Fund; Tax Consultancy; Will Writing Services,"Independent public financial-adviser profile; ca, cfa / Exp. 5 yrs",Medium,Public directory phone/email,Referral directory / Advisorkhoj,https://www.advisorkhoj.com/Mumbai/Housing-Loans-Advisor,,Contactable independent adviser prospect; verify current services and team size before outreach,2026-06-09
+```
+
+---
+
+## Import Notes
+
+1. **Email is required** for valid prospect import
+2. **Name is highly recommended** but can be blank
+3. **Loan categories** can contain multiple values separated by semicolons
+4. **Dates** should be in `YYYY-MM-DD` format
+5. Empty cells are allowed - just leave the cell blank
+6. **Company Name** and **Business Name** are interchangeable
+7. **Contact Person** and **Name** are interchangeable
+8. **Public Email** and **Email** are interchangeable
+
+---
+
+## Mapping Between Formats
+
+The import system intelligently maps between column name variations:
+
+| Simple Column | DSA Column | Alternate Names |
+|--------------|------------|-----------------|
+| `name` | `Contact Person` | `Contact Person`, `Name` |
+| `email` | `Public Email` | `Public Email`, `Email` |
+| `phone` | `Public Phone` | `Public Phone`, `Phone` |
+| `city` | `City` | `City` |
+| `company_name` | `Business Name` | `Business Name`, `Company Name` |
+| `loan_category` | `Loan Categories` | `Loan Categories`, `Loan Categories` |
+
+---
+
+## Sample Data Included
+
+This file contains 20 sample prospects using the **Simple Format** in the rows below this header.

@@ -1,0 +1,21 @@
+name,email,phone,city,company_name,loan_category,status,lead_score
+"Aarav Patel","aarav.patel@example.com","9876543210","Mumbai","Patel Construction","Home Loan",new,0
+"Diya Sharma","diya.sharma@example.com","9876543211","Delhi","Sharma Enterprises","Personal Loan",new,0
+"Rohan Gupta","rohan.gupta@example.com","9876543212","Bangalore","Gupta Tech Solutions","Business Loan",new,0
+"Sneha Reddy","sneha.reddy@example.com","9876543213","Hyderabad","Reddy Investments","Car Loan",new,0
+"Amit Singh","amit.singh@example.com","9876543214","Chennai","Singh Properties","Education Loan",new,0
+"Priya Desai","priya.desai@example.com","9876543215","Pune","Desai Financial Services","Loan Against Property",new,0
+"Vikram Joshi","vikram.joshi@example.com","9876543216","Kolkata","Joshi Trading Co","Business Loan",new,0
+"Ananya Bose","ananya.bose@example.com","9876543217","Kolkata","Bose Medical","Personal Loan",new,0
+"Arjun Nair","arjun.nair@example.com","9876543218","Kochi","Nair Exports","Home Loan",new,0
+"Kavya Menon","kavya.menon@example.com","9876543219","Trivandrum","Menon Retail","Car Loan",new,0
+"Karthik Iyer","karthik.iyer@example.com","9876543220","Chennai","Iyer Consultants","Personal Loan",new,0
+"Meera Krishnan","meera.krishnan@example.com","9876543221","Coimbatore","Krishnan Textiles","Business Loan",new,0
+"Aryan Kumar","aryan.kumar@example.com","9876543222","Jaipur","Kumar Industries","Home Loan",new,0
+"Riya Patel","riya.patel@example.com","9876543223","Ahmedabad","Patel Ventures","Education Loan",new,0
+"Siddharth Verma","siddharth.verma@example.com","9876543224","Lucknow","Verma Associates","Loan Against Property",new,0
+"Aditi Mishra","aditi.mishra@example.com","9876543225","Indore","Mishra Traders","Personal Loan",new,0
+"Neel Deshpande","neel.deshpande@example.com","9876543226","Nagpur","Deshpande Infra","Business Loan",new,0
+"Sanya Kapoor","sanya.kapoor@example.com","9876543227","Surat","Kapoor Diamonds","Home Loan",new,0
+"Aditya Rao","aditya.rao@example.com","9876543228","Visakhapatnam","Rao Builders","Construction Loan",new,0
+"Deepika Nambiar","deepika.nambiar@example.com","9876543229","Mangalore","Nambiar Marine","Business Loan",new,0

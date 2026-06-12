@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Archive, Download, RotateCcw, Trash2 } from "lucide-react";
-import { bulkProspectAction } from "@/app/admin/actions";
+import { Archive, Download, FolderInput, RotateCcw, Trash2 } from "lucide-react";
+import { bulkProspectAction, moveProspectsToFolder } from "@/app/admin/actions";
 import { ReusableProspectTable } from "./reusable-prospect-table";
+import type { ProspectFolder } from "./prospect-folder-browser";
 
-export function ProspectsTableManager(props: React.ComponentProps<typeof ReusableProspectTable> & { view: "active" | "archived" | "deleted" }) {
+export function ProspectsTableManager(props: React.ComponentProps<typeof ReusableProspectTable> & { view: "active" | "archived" | "deleted"; folders: ProspectFolder[] }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [status, setStatus] = useState("contacted");
   const [message, setMessage] = useState("");
+  const [folderId, setFolderId] = useState("");
   const [pending, startTransition] = useTransition();
 
   const run = (action: "status" | "archive" | "delete" | "restore_archive" | "restore_delete") => {
@@ -17,6 +19,15 @@ export function ProspectsTableManager(props: React.ComponentProps<typeof Reusabl
     startTransition(async () => {
       const result = await bulkProspectAction({ ids: selectedIds, action, status });
       setMessage(result.success ? `${result.count} prospects updated.` : result.error ?? "Could not update prospects.");
+      if (result.success) setSelectedIds([]);
+    });
+  };
+
+  const moveSelected = () => {
+    if (!selectedIds.length) return;
+    startTransition(async () => {
+      const result = await moveProspectsToFolder(selectedIds, folderId || undefined);
+      setMessage(result.success ? `${result.count} prospects moved.` : result.error ?? "Could not move prospects.");
       if (result.success) setSelectedIds([]);
     });
   };
@@ -53,6 +64,11 @@ export function ProspectsTableManager(props: React.ComponentProps<typeof Reusabl
               <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={() => run("status")}>Change status</button>
               <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={() => run("archive")}><Archive className="h-4 w-4" />Archive</button>
               <button className="btn-secondary text-red-600" disabled={pending || !selectedIds.length} onClick={() => run("delete")}><Trash2 className="h-4 w-4" />Delete</button>
+              <select aria-label="Destination folder" value={folderId} onChange={(event) => setFolderId(event.target.value)} className="field w-auto" disabled={pending}>
+                <option value="">Top level</option>
+                {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+              </select>
+              <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={moveSelected}><FolderInput className="h-4 w-4" />Move</button>
             </>
           ) : (
             <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={() => run(props.view === "archived" ? "restore_archive" : "restore_delete")}>

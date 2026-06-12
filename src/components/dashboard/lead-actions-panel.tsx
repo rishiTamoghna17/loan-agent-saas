@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, FileText, Settings2, Trash2, X } from "lucide-react";
-import { addLeadNote, deleteLead } from "@/app/dashboard/actions";
+import { Archive, CalendarClock, FileText, RotateCcw, Settings2, Trash2, X } from "lucide-react";
+import { addLeadNote, archiveLead, deleteLead, restoreLead } from "@/app/dashboard/actions";
 import { FollowUpControls } from "@/components/dashboard/follow-up-controls";
 import { PendingButton } from "@/components/ui/pending-button";
 import { formatDate } from "@/lib/format";
@@ -17,7 +17,8 @@ export function LeadActionsPanel({
   timezone,
   notes,
   followUps,
-  disabled
+  disabled,
+  lifecycle = "active"
 }: {
   leadId: string;
   agentId: string;
@@ -26,6 +27,7 @@ export function LeadActionsPanel({
   notes: Note[];
   followUps: FollowUp[];
   disabled: boolean;
+  lifecycle?: "active" | "archived" | "deleted";
 }) {
   const [open, setOpen] = useState(false);
   const pending = followUps.find((item) => item.status === "pending");
@@ -82,15 +84,14 @@ export function LeadActionsPanel({
               </div>
             </section>
 
-            <section className="mt-5 flex items-center justify-between border-t border-slate-100 pt-5">
+            <section className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-5">
               <p className="text-xs text-slate-500">{pending ? "A follow-up is currently scheduled." : "No pending follow-up."}</p>
-              <form action={deleteLead}>
-                <input type="hidden" name="lead_id" value={leadId} />
-                <PendingButton className="btn-secondary text-red-600" pendingText="Deleting..." disabled={disabled}>
-                  <Trash2 className="h-4 w-4" />
-                  Delete lead
-                </PendingButton>
-              </form>
+              <div className="flex flex-wrap gap-2">
+                {lifecycle === "active" ? <>
+                  <form action={archiveLead}><input type="hidden" name="lead_id" value={leadId} /><PendingButton className="btn-secondary" pendingText="Archiving..." disabled={disabled}><Archive className="h-4 w-4" />Archive</PendingButton></form>
+                  <form action={deleteLead}><input type="hidden" name="lead_id" value={leadId} /><PendingButton className="btn-secondary text-red-600" pendingText="Deleting..." disabled={disabled}><Trash2 className="h-4 w-4" />Delete</PendingButton></form>
+                </> : <form action={restoreLead}><input type="hidden" name="lead_id" value={leadId} /><PendingButton className="btn-secondary" pendingText="Restoring..." disabled={disabled}><RotateCcw className="h-4 w-4" />Restore lead</PendingButton></form>}
+              </div>
             </section>
           </div>
         </div>

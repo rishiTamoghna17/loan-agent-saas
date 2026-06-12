@@ -1,16 +1,28 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, BellRing, Building2, Download, Globe2, MapPin, Mail, Phone, UserRound } from "lucide-react";
+import { AlertTriangle, BellRing, Building2, Download, Folder, Globe2, MapPin, Mail, Phone, UserRound } from "lucide-react";
 import { ContactLeadButton } from "@/components/dashboard/contact-lead-button";
 import { AddLeadsMenu } from "@/components/dashboard/add-leads-menu";
 import { LeadActionsPanel } from "@/components/dashboard/lead-actions-panel";
 import { LeadFilters } from "@/components/dashboard/lead-filters";
 import { LeadPagination } from "@/components/dashboard/lead-pagination";
 import { LeadStatusSelect } from "@/components/dashboard/lead-status-select";
+import { LeadFolderBrowser } from "@/components/agent/lead-folder-browser";
+import { LeadFolderMoveTable } from "@/components/agent/lead-folder-move-table";
+import { LeadImport } from "@/components/agent/lead-import";
+import { getLeadFolders } from "@/app/dashboard/actions";
 import { SUPPORT_CONTACT } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { classifyFollowUp, formatFollowUpDate } from "@/lib/follow-ups";
 import { createClient } from "@/lib/supabase/server";
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function getFolderName(folders: Array<{ id: string; name: string }>, folderId?: string | null): string | null {
+  if (!folderId) return null;
+  const folder = folders.find(f => f.id === folderId);
+  return folder ? folder.name : null;
+}
 
 export default async function DashboardPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const supabase = createClient();
@@ -23,7 +35,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
   const { data: agent } = await supabase.from("agents").select("*").eq("user_id", user.id).single();
   if (!agent) redirect("/signup");
 
-  const [leadResult, eventResult, followUpResult, preferenceResult] = await Promise.all([
+  const filterValues = Object.fromEntries(Object.entries(searchParams).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? "" : value ?? ""])) as Record<string, string>;
+  const folderId = typeof filterValues.folder === "string" ? filterValues.folder : undefined;
+  const [leadResult, eventResult, followUpResult, preferenceResult, folders] = await Promise.all([
     supabase
       .from("leads")
       .select("*, lead_notes(id, note, created_at), lead_follow_ups(id,due_at,note,status,completed_at,completion_source,created_at)")
@@ -31,7 +45,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
       .order("created_at", { ascending: false }),
     supabase.from("agent_events").select("event_type").eq("agent_id", agent.id),
     supabase.from("lead_follow_ups").select("*, leads!inner(name,phone,loan_type)").eq("agent_id", agent.id).order("due_at"),
-    supabase.from("agent_notification_preferences").select("*").eq("agent_id", agent.id).maybeSingle()
+    supabase.from("agent_notification_preferences").select("*").eq("agent_id", agent.id).maybeSingle(),
+    getLeadFolders()
   ]);
   const leadRows = leadResult.data;
   const events = eventResult.data ?? [];
@@ -64,12 +79,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
       ? Math.round((events.filter((event) => event.event_type === "lead_submission").length / events.filter((event) => event.event_type === "website_visit").length) * 100)
       : 0
   };
-  const filterValues = Object.fromEntries(Object.entries(searchParams).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? "" : value ?? ""])) as Record<string, string>;
   const pageSize = [10, 20, 50, 100].includes(Number(filterValues.pageSize)) ? Number(filterValues.pageSize) : 20;
   const requestedPage = Math.max(1, Number(filterValues.page) || 1);
   const filteredLeads = leads.filter((lead) => {
     const q = filterValues.q?.toLowerCase();
     const pending = Array.isArray(lead.lead_follow_ups) ? lead.lead_follow_ups.find((item: { status: string }) => item.status === "pending") : null;
+    const view = filterValues.view || "active";
+    if (view === "active" && (lead.archived_at || lead.deleted_at)) return false;
+    if (view === "archived" && (!lead.archived_at || lead.deleted_at)) return false;
+    if (view === "deleted" && !lead.deleted_at) return false;
     if (q && !lead.name.toLowerCase().includes(q) && !lead.phone.toLowerCase().includes(q)) return false;
     if (filterValues.status && lead.status !== filterValues.status) return false;
     if (filterValues.source && lead.source !== filterValues.source) return false;
@@ -90,9 +108,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
     if (filterValues.sort === "follow_up_asc") return aFollowUp.localeCompare(bFollowUp);
     return b.created_at.localeCompare(a.created_at);
   });
-  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / pageSize));
+
+  // Apply folder filter
+  const filteredLeadsWithFolder = filteredLeads.filter((lead) => {
+    if (folderId === "unfiled") return !lead.folder_id;
+    else if (folderId && uuidRegex.test(folderId)) return lead.folder_id === folderId;
+    return true;
+  });
+  const totalPages = Math.max(1, Math.ceil(filteredLeadsWithFolder.length / pageSize));
   const page = Math.min(requestedPage, totalPages);
-  const visibleLeads = filteredLeads.slice((page - 1) * pageSize, page * pageSize);
+  const visibleLeads = filteredLeadsWithFolder.slice((page - 1) * pageSize, page * pageSize);
   const exportParams = new URLSearchParams(filterValues);
   exportParams.delete("page");
   exportParams.delete("pageSize");
@@ -215,16 +240,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
           </div>
         </div>
         <LeadFilters values={filterValues} />
-        <div className="overflow-x-auto">
+        <LeadFolderMoveTable folders={folders} disabled={isTrialExpired} />
+          <div className="overflow-x-auto">
           <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
+                <th className="w-12 px-4 py-3"><span className="sr-only">Select</span></th>
                 <th className="w-[17%] px-4 py-3">Name</th>
                 <th className="w-[12%] px-4 py-3">Phone</th>
                 <th className="w-[12%] px-4 py-3">Loan type</th>
                 <th className="w-[10%] px-4 py-3">Amount</th>
                 <th className="w-[14%] px-4 py-3">City</th>
                 <th className="w-[9%] px-4 py-3">Source</th>
+                <th className="w-[10%] px-4 py-3">Folder</th>
                 <th className="w-[12%] px-4 py-3">Status</th>
                 <th className="w-[9%] px-4 py-3">Created</th>
                 <th className="w-[15%] px-4 py-3">Actions</th>
@@ -233,6 +261,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
             <tbody className="divide-y divide-slate-100">
               {visibleLeads.map((lead) => (
                 <tr key={lead.id} className="align-top">
+                  <td className="px-4 py-4"><input type="checkbox" name="lead_ids" value={lead.id} form="move-leads-form" aria-label={`Select ${lead.name}`} disabled={isTrialExpired} /></td>
                   <td className="px-4 py-4">
                     <p className="font-semibold text-slate-900">{lead.name}</p>
                     {lead.email ? <p className="text-xs text-slate-500">{lead.email}</p> : null}
@@ -253,6 +282,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
                   </td>
                   <td className="px-4 py-4">{lead.source ?? "Website"}</td>
                   <td className="px-4 py-4">
+                    {lead.folder_id ? (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+                        <Folder className="h-3 w-3" />
+                        {getFolderName(folders, lead.folder_id)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4">
                     {isTrialExpired ? <span className="text-sm text-slate-500">Locked</span> : <LeadStatusSelect leadId={lead.id} status={lead.status} />}
                   </td>
                   <td className="px-4 py-4">{formatDate(lead.created_at)}</td>
@@ -267,6 +306,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
                         notes={lead.lead_notes ?? []}
                         followUps={lead.lead_follow_ups ?? []}
                         disabled={isTrialExpired}
+                        lifecycle={lead.deleted_at ? "deleted" : lead.archived_at ? "archived" : "active"}
                       />
                     </div>
                   </td>
@@ -274,7 +314,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
               ))}
               {!visibleLeads.length ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-slate-500">
                     No leads yet. Share your public page to start receiving enquiries.
                   </td>
                 </tr>
@@ -282,8 +322,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
             </tbody>
           </table>
         </div>
-        <LeadPagination page={page} pageSize={pageSize} count={filteredLeads.length} query={filterValues} />
+        <LeadPagination page={page} pageSize={pageSize} count={filteredLeadsWithFolder.length} query={filterValues} />
       </section>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <LeadFolderBrowser folders={folders} activeFolderId={folderId} />
+          <div className="mt-8">
+            <LeadImport folderId={folderId} />
+          </div>
+        </div>
+
+        <div className="lg:col-span-2">
+          {folderId ? (
+            <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+              Showing folder: <span className="font-semibold text-ink">{folderId === "unfiled" ? "Unfiled" : folders.find(f => f.id === folderId)?.name}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

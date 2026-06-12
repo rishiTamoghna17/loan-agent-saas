@@ -3,12 +3,12 @@
 import { useState } from "react";
 import Papa from "papaparse";
 import { Upload, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { importProspects } from "@/app/admin/actions";
+import { importLeadsWithFolder } from "@/app/dashboard/actions";
 
 // UUID regex for validation
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function ProspectImport({ folderId }: { folderId?: string }) {
+export function LeadImport({ folderId }: { folderId?: string }) {
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -49,25 +49,27 @@ export function ProspectImport({ folderId }: { folderId?: string }) {
             targetFolderId = folderId;
           }
 
-          // Import prospects
-          const prospects = results.data.map((row: any) => ({
-            // Support both generic format and LeadHub specific CSV format
-            company_name: row.company_name || row["Business Name"] || "",
-            name: row.name || row["Contact Person"] || row["Business Name"] || "",
-            email: (row.email || row["Public Email"] || "").trim().toLowerCase(),
-            phone: row.phone || row["Public Phone"] || "",
+          // Import leads - adapt to leads schema
+          const leads = results.data.map((row: any) => ({
+            name: row.name || row["Candidate Name"] || "",
+            email: (row.email || row["Candidate Email"] || "").trim().toLowerCase(),
+            phone: row.phone || row["Candidate Phone"] || "",
+            loan_type: row.loan_type || row["Loan Type"] || "",
+            required_amount: row.required_amount || row["Loan Amount"] || "0",
             city: row.city || row["City"] || "",
-            loan_category: row.loan_category || row["Loan Categories"] || "",
-            status: "new",
-            lead_score: 0
+            district: row.district || row["District"] || "",
+            state: row.state || row["State"] || "",
+            pincode: row.pincode || row["Pincode"] || "",
+            source: "Manual",
+            status: "new"
           }));
 
-          const validProspects = prospects.filter(p => p.email && p.email.includes("@"));
+          const validLeads = leads.filter(l => l.name && (l.email && l.email.includes("@") || l.phone));
 
-          if (validProspects.length === 0) {
+          if (validLeads.length === 0) {
             setResult({
               success: false,
-              error: "No valid prospects found in CSV (email is required)"
+              error: "No valid leads found in CSV (name is required, and either email or phone)"
             });
             setIsImporting(false);
             e.target.value = "";
@@ -75,7 +77,7 @@ export function ProspectImport({ folderId }: { folderId?: string }) {
           }
 
           // Import with folder name for auto-folder creation
-          const response = await importProspects(validProspects, targetFolderId, folderName);
+          const response = await importLeadsWithFolder(validLeads, targetFolderId, folderName);
 
           if (response.success) {
             setResult({
@@ -87,7 +89,7 @@ export function ProspectImport({ folderId }: { folderId?: string }) {
           } else {
             setResult({
               success: false,
-              error: response.error || "Failed to import prospects"
+              error: response.error || "Failed to import leads"
             });
           }
         } catch (error) {
@@ -107,12 +109,12 @@ export function ProspectImport({ folderId }: { folderId?: string }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-ink">Import Prospects</h2>
-      <p className="mb-4 text-sm text-slate-500">Upload your LeadHub prospects CSV or a file with standard columns (name, email, city).</p>
+      <h2 className="text-lg font-semibold text-ink">Import Leads</h2>
+      <p className="mb-4 text-sm text-slate-500">Upload your leads CSV file with standard columns (name, email/phone, loan_type).</p>
 
       <div className="mb-4">
         <a
-          href="/sample-prospects-import-template.csv"
+          href="/sample-leads-import-template.csv"
           download
           className="text-sm font-semibold text-brand-blue hover:underline"
         >
@@ -150,10 +152,10 @@ export function ProspectImport({ folderId }: { folderId?: string }) {
                 <CheckCircle2 className="h-4 w-4" />
                 {result.folderId ? (
                   <span>
-                    Successfully imported {result.count} prospects into folder: <span className="font-semibold">{result.folderName || "Current folder"}</span>!
+                    Successfully imported {result.count} leads into folder: <span className="font-semibold">{result.folderName || "Current folder"}</span>!
                   </span>
                 ) : (
-                  <span>Successfully imported {result.count} prospects!</span>
+                  <span>Successfully imported {result.count} leads!</span>
                 )}
               </>
             ) : (

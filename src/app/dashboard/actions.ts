@@ -7,6 +7,8 @@ import { deleteLeadSchema, followUpSchema, followUpStatusSchema, leadNoteSchema,
 import { createClient } from "@/lib/supabase/server";
 import { zonedDateTimeToUtc } from "@/lib/follow-ups";
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function requireAgent() {
   const supabase = createClient();
   const {
@@ -31,6 +33,7 @@ export type LeadMutationResult = {
   ok: boolean;
   message: string;
   imported?: number;
+  folderName?: string;
   rejected?: Array<{ row: number; reason: string }>;
 };
 
@@ -64,7 +67,7 @@ export async function createManualLead(input: unknown): Promise<LeadMutationResu
   return { ok: true, message: "Lead added successfully." };
 }
 
-export async function importLeads(input: unknown): Promise<LeadMutationResult> {
+export async function importLeads(input: unknown, folderName?: string): Promise<LeadMutationResult> {
   if (!Array.isArray(input) || !input.length) return { ok: false, message: "Choose a file containing at least one lead." };
   if (input.length > 1000) return { ok: false, message: "Import a maximum of 1,000 leads at a time." };
   const { supabase, agent } = await requireAgent();
@@ -77,10 +80,41 @@ export async function importLeads(input: unknown): Promise<LeadMutationResult> {
     else rejected.push({ row: index + 2, reason: parsed.error.errors[0]?.message || "Invalid lead" });
   });
   if (!valid.length) return { ok: false, message: "No valid leads were found.", rejected };
-  const { error } = await supabase.from("leads").insert(valid);
+  let targetFolderId: string | null = null;
+  let targetFolderName = "";
+  const trimmedFolderName = folderName?.trim().slice(0, 100);
+  if (trimmedFolderName) {
+    const { data: existingFolder } = await supabase
+      .from("lead_folders")
+      .select("id,name")
+      .eq("agent_id", agent.id)
+      .eq("name", trimmedFolderName)
+      .maybeSingle();
+    if (existingFolder) {
+      targetFolderId = existingFolder.id;
+      targetFolderName = existingFolder.name;
+    } else {
+      const { data: createdFolder, error: folderError } = await supabase
+        .from("lead_folders")
+        .insert({ agent_id: agent.id, name: trimmedFolderName })
+        .select("id,name")
+        .single();
+      if (folderError || !createdFolder) return { ok: false, message: folderError?.message || "Could not create the import folder.", rejected };
+      targetFolderId = createdFolder.id;
+      targetFolderName = createdFolder.name;
+    }
+  }
+  const inserts = targetFolderId ? valid.map((lead) => ({ ...lead, folder_id: targetFolderId })) : valid;
+  const { error } = await supabase.from("leads").insert(inserts);
   if (error) return { ok: false, message: error.message, rejected };
   revalidatePath("/dashboard");
-  return { ok: true, message: `${valid.length} lead${valid.length === 1 ? "" : "s"} imported successfully.`, imported: valid.length, rejected };
+  return {
+    ok: true,
+    message: `${valid.length} lead${valid.length === 1 ? "" : "s"} imported${targetFolderName ? ` into ${targetFolderName}` : ""} successfully.`,
+    imported: valid.length,
+    folderName: targetFolderName || undefined,
+    rejected
+  };
 }
 
 export async function updateLeadStatus(formData: FormData) {
@@ -120,7 +154,25 @@ export async function deleteLead(formData: FormData) {
 
   const { supabase, agent } = await requireAgent();
   if (isDashboardLocked(agent)) return;
-  await supabase.from("leads").delete().eq("id", parsed.data.lead_id).eq("agent_id", agent.id);
+  await supabase.from("leads").update({ deleted_at: new Date().toISOString(), archived_at: null }).eq("id", parsed.data.lead_id).eq("agent_id", agent.id);
+  revalidatePath("/dashboard");
+}
+
+export async function archiveLead(formData: FormData) {
+  const parsed = deleteLeadSchema.safeParse({ lead_id: formData.get("lead_id") });
+  if (!parsed.success) return;
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return;
+  await supabase.from("leads").update({ archived_at: new Date().toISOString(), deleted_at: null }).eq("id", parsed.data.lead_id).eq("agent_id", agent.id);
+  revalidatePath("/dashboard");
+}
+
+export async function restoreLead(formData: FormData) {
+  const parsed = deleteLeadSchema.safeParse({ lead_id: formData.get("lead_id") });
+  if (!parsed.success) return;
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return;
+  await supabase.from("leads").update({ archived_at: null, deleted_at: null }).eq("id", parsed.data.lead_id).eq("agent_id", agent.id);
   revalidatePath("/dashboard");
 }
 
@@ -233,4 +285,153 @@ export async function updateProfile(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/profile");
   revalidatePath(`/agent/${parsed.data.slug}`);
+}
+
+export async function importLeadsWithFolder(leads: any[], folderId?: string, folderName?: string) {
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+
+  // If folder name provided, create folder or get existing
+  let targetFolderId: string | undefined = folderId;
+  if (folderName) {
+    const trimmedName = folderName.trim().slice(0, 100);
+    if (trimmedName) {
+      // Check if folder with this name already exists
+      const { data: existingFolders } = await supabase
+        .from("lead_folders")
+        .select("id")
+        .eq("name", trimmedName)
+        .eq("agent_id", agent.id)
+        .single();
+
+      if (existingFolders && existingFolders.id) {
+        targetFolderId = existingFolders.id;
+      } else {
+        // Create new folder
+        const { data: newFolder, error: folderError } = await supabase
+          .from("lead_folders")
+          .insert({ agent_id: agent.id, name: trimmedName })
+          .select("id")
+          .single();
+
+        if (folderError) {
+          console.error("Error creating folder:", folderError);
+          return { success: false, error: `Could not create folder: ${folderError.message}` };
+        }
+
+        if (newFolder && newFolder.id) {
+          targetFolderId = newFolder.id;
+        }
+      }
+    }
+  }
+
+  // Filter out invalid leads
+  const validLeads = leads
+    .filter(l => l.name && (l.email || l.phone))
+    .map((lead) => ({
+      ...lead,
+      agent_id: agent.id,
+      ...(targetFolderId && uuidRegex.test(targetFolderId) ? { folder_id: targetFolderId } : {})
+    }));
+
+  if (validLeads.length === 0) {
+    return { success: false, error: "No valid leads found" };
+  }
+
+  const { data, error } = await supabase
+    .from("leads")
+    .insert(validLeads)
+    .select();
+
+  if (error) {
+    console.error("Import error:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+
+  return { success: true, count: data?.length || 0, folderId: targetFolderId, folderName };
+}
+
+export async function getLeadFolders() {
+  const { supabase, agent } = await requireAgent();
+  const [{ data: folders, error }, { data: leads }] = await Promise.all([
+    supabase.from("lead_folders").select("id, name, parent_id, created_at").eq("agent_id", agent.id).order("name"),
+    supabase.from("leads").select("folder_id").eq("agent_id", agent.id).eq("status", "new")
+  ]);
+  if (error) throw new Error(error.message);
+  const counts = (leads ?? []).reduce<Record<string, number>>((result, lead) => {
+    if (lead.folder_id) result[lead.folder_id] = (result[lead.folder_id] ?? 0) + 1;
+    return result;
+  }, {});
+  return (folders ?? []).map((folder) => ({ ...folder, lead_count: counts[folder.id] ?? 0 }));
+}
+
+export async function createLeadFolder(name: string, parentId?: string) {
+  const { supabase, agent } = await requireAgent();
+  const trimmedName = name.trim().slice(0, 100);
+  if (!trimmedName) return { success: false, error: "Enter a folder name." };
+  const parent_id = parentId && uuidRegex.test(parentId) ? parentId : null;
+  const { error } = await supabase.from("lead_folders").insert({ agent_id: agent.id, name: trimmedName, parent_id });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function renameLeadFolder(id: string, name: string) {
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const trimmedName = name.trim().slice(0, 100);
+  if (!trimmedName) return { success: false, error: "Enter a folder name." };
+  const { supabase, agent } = await requireAgent();
+  const { error } = await supabase.from("lead_folders").update({ name: trimmedName }).eq("id", id).eq("agent_id", agent.id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function deleteLeadFolder(id: string) {
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const { supabase, agent } = await requireAgent();
+  const { error } = await supabase.from("lead_folders").delete().eq("id", id).eq("agent_id", agent.id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function moveLeadsToFolder(ids: string[], folderId?: string) {
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+  const validIds = [...new Set(ids)].filter((id) => uuidRegex.test(id)).slice(0, 500);
+  if (!validIds.length) return { success: false, error: "Select at least one lead." };
+  const folder_id = folderId && uuidRegex.test(folderId) ? folderId : null;
+  if (folder_id) {
+    const { data: folder, error: folderError } = await supabase
+      .from("lead_folders")
+      .select("id")
+      .eq("id", folder_id)
+      .eq("agent_id", agent.id)
+      .maybeSingle();
+    if (folderError || !folder) return { success: false, error: "Choose one of your own folders." };
+  }
+  const { data: oldRows, error: oldError } = await supabase.from("leads").select("*").in("id", validIds).eq("agent_id", agent.id);
+  if (oldError) return { success: false, error: oldError.message };
+  const { data, error } = await supabase.from("leads").update({ folder_id }).in("id", validIds).eq("agent_id", agent.id).select("id");
+  if (error) return { success: false, error: error.message };
+  await supabase.from("lead_audit_logs").insert((oldRows ?? []).map((row) => ({
+    agent_id: agent.id,
+    action: "move_folder",
+    table_name: "leads",
+    record_id: row.id,
+    old_data: row,
+    new_data: { folder_id }
+  })));
+  revalidatePath("/dashboard");
+  return { success: true, count: data?.length ?? 0 };
+}
+
+export async function moveSelectedLeadsToFolder(formData: FormData) {
+  const ids = formData.getAll("lead_ids").map(String);
+  const folderId = String(formData.get("folder_id") || "");
+  await moveLeadsToFolder(ids, folderId || undefined);
 }

@@ -16,7 +16,8 @@
     "test:brevo-send": "node scripts/test-brevo-send.mjs",
     "test:brevo-webhook": "node scripts/test-brevo-webhook.mjs",
     "test:db": "node scripts/test-supabase-db.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "e2e:driver": "node scripts/run-loan-agent-e2e.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

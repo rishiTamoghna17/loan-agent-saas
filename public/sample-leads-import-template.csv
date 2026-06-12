@@ -1,0 +1,6 @@
+name,email,phone,loan_type,required_amount,city,district,state,pincode,landmark,source
+John Doe,john.doe@email.com,9876543210,Home Loan,5000000,Mumbai,Maharashtra,Maharashtra,400001,Near Linking Road,Manual
+Jane Smith,jane.smith@email.com,9876543211,Business Loan,2000000,Pune,Maharashtra,Maharashtra,411001,Kothrud,Manual
+Robert Johnson,robert.j@email.com,9876543212,Personal Loan,500000,Bangalore,Karnataka,Karnataka,560001,Indiranagar,Manual
+Sarah Williams,sarah.w@email.com,9876543213,Vehicle Loan,800000,Delhi,Delhi,Delhi,110001,Dwarka,Manual
+Michael Brown,michael.b@email.com,9876543214,Education Loan,1200000,Hyderabad,Telangana,Telangana,500001,Gachibowli,Manual

@@ -2,7 +2,8 @@ import { ProspectImport } from "@/components/admin/prospect-import";
 import { AddProspectForm } from "@/components/admin/add-prospect-form";
 import { ProspectsTableManager } from "@/components/admin/prospects-table-manager";
 import Link from "next/link";
-import { getProspects } from "@/app/admin/actions";
+import { getProspectFolders, getProspects } from "@/app/admin/actions";
+import { ProspectFolderBrowser } from "@/components/admin/prospect-folder-browser";
 import { 
   Search 
 } from "lucide-react";
@@ -30,14 +31,15 @@ export default async function ProspectsPage({
     : "lead_score";
   const sortDirection = searchParams.sortDirection === "asc" ? "asc" : "desc";
   const view = searchParams.view === "archived" || searchParams.view === "deleted" ? searchParams.view : "active";
+  const folderId = typeof searchParams.folder === "string" ? searchParams.folder : undefined;
 
-  const { 
-    prospects, 
-    count, 
+  const [{
+    prospects,
+    count,
     totalPages,
     pageSize,
     currentPage
-  } = await getProspects({
+  }, folders] = await Promise.all([getProspects({
     page,
     pageSize: requestedPageSize,
     status: statusFilter,
@@ -46,8 +48,11 @@ export default async function ProspectsPage({
     engagement: engagementFilter,
     sortBy,
     sortDirection,
-    view
-  });
+    view,
+    folderId
+  }), getProspectFolders()]);
+  const activeFolder = folders.find((folder) => folder.id === folderId);
+  const activeFolderName = folderId === "unfiled" ? "Unfiled" : activeFolder?.name;
 
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -65,12 +70,12 @@ export default async function ProspectsPage({
               Total: <span className="text-ink">{count}</span>
             </div>
           )}
-          <AddProspectForm />
+          <AddProspectForm folderId={folderId} />
         </div>
       </div>
       <div className="mb-6 flex gap-2 border-b border-slate-200">
         {(["active", "archived", "deleted"] as const).map((item) => (
-          <Link key={item} href={`/admin/prospects?view=${item}`} className={`border-b-2 px-4 py-2 text-sm font-semibold capitalize ${view === item ? "border-brand-blue text-brand-blue" : "border-transparent text-slate-500"}`}>
+          <Link key={item} href={`/admin/prospects?view=${item}${folderId ? `&folder=${folderId}` : ""}`} className={`border-b-2 px-4 py-2 text-sm font-semibold capitalize ${view === item ? "border-brand-blue text-brand-blue" : "border-transparent text-slate-500"}`}>
             {item}
           </Link>
         ))}
@@ -78,7 +83,10 @@ export default async function ProspectsPage({
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-1">
-          <ProspectImport />
+          <ProspectFolderBrowser folders={folders} activeFolderId={folderId} />
+          <div className="mt-8">
+            <ProspectImport folderId={folderId} />
+          </div>
           
           <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-ink">Filters</h2>
@@ -87,6 +95,7 @@ export default async function ProspectsPage({
               <input type="hidden" name="sortBy" value={sortBy} />
               <input type="hidden" name="sortDirection" value={sortDirection} />
               <input type="hidden" name="view" value={view} />
+              {folderId ? <input type="hidden" name="folder" value={folderId} /> : null}
               <div>
                 <label className="text-sm font-medium text-slate-700">Search</label>
                 <div className="relative mt-1">
@@ -147,6 +156,11 @@ export default async function ProspectsPage({
         </div>
 
         <div className="lg:col-span-2">
+          {activeFolderName ? (
+            <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+              Showing folder: <span className="font-semibold text-ink">{activeFolderName}</span>
+            </div>
+          ) : null}
           <ProspectsTableManager
             prospects={prospects}
             from={from}
@@ -159,6 +173,7 @@ export default async function ProspectsPage({
             sortDirection={sortDirection}
             showDelete={view === "active"}
             view={view}
+            folders={folders}
           />
         </div>
       </div>

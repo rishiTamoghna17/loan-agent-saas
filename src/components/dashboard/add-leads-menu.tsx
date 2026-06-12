@@ -15,7 +15,18 @@ const emptyLead: LeadDraft = { name: "", phone: "", email: "", loan_type: "Perso
 
 function normalizeRow(row: Record<string, unknown>): LeadDraft {
   const values = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.trim().toLowerCase().replaceAll(" ", "_"), value]));
-  return Object.fromEntries(fields.map((field) => [field, String(values[field] ?? (field === "source" ? "Manual" : "")).trim()])) as LeadDraft;
+  const normalized = Object.fromEntries(fields.map((field) => [field, String(values[field] ?? (field === "source" ? "Manual" : "")).trim()])) as LeadDraft;
+  normalized.source = LEAD_SOURCES.includes(normalized.source as (typeof LEAD_SOURCES)[number]) ? normalized.source : "Manual";
+  return normalized;
+}
+
+function folderNameFromFile(fileName: string) {
+  return fileName
+    .replace(/\.(csv|xls|xlsx)$/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 100);
 }
 
 export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
@@ -51,9 +62,12 @@ export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
 
   async function runImport() {
     setBusy(true);
-    const result = await importLeads(rows);
+    const result = await importLeads(rows, folderNameFromFile(fileName));
     setBusy(false);
-    if (!result.ok) return toast.error(result.message);
+    if (!result.ok) {
+      const firstReason = result.rejected?.[0]?.reason;
+      return toast.error(firstReason ? `${result.message} First issue: ${firstReason}` : result.message);
+    }
     toast.success(result.message);
     if (result.rejected?.length) toast.warning(`${result.rejected.length} invalid row${result.rejected.length === 1 ? " was" : "s were"} skipped.`);
     setRows([]);
@@ -92,7 +106,7 @@ export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
   </>;
 }
 
-function LeadFields({ value, onChange }: { value: LeadDraft; onChange: (value: LeadDraft) => void }) {
+function LeadFields({ value, onChange }: { value: LeadDraft; onChange: React.Dispatch<React.SetStateAction<LeadDraft>> }) {
   // Use functional updates to avoid depending on `value` in callbacks
   const update = useCallback((field: keyof LeadDraft, next: string) => {
     onChange(prevValue => ({ ...prevValue, [field]: next }));

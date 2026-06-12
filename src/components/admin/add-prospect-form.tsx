@@ -5,7 +5,7 @@ import { Plus, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { addProspect } from "@/app/admin/actions";
 import { PincodeAddressFields } from "@/components/address/pincode-address-fields";
 
-export function AddProspectForm() {
+export function AddProspectForm({ folderId }: { folderId?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; error?: string } | null>(null);
@@ -37,7 +37,7 @@ export function AddProspectForm() {
     };
 
     try {
-      const response = await addProspect(data);
+      const response = await addProspect(data, folderId);
       setResult(response);
       if (response.success) {
         // Reset form or close after delay

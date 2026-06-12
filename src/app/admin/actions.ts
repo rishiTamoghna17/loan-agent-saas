@@ -14,12 +14,50 @@ async function ensureAdmin() {
   await requireAdminUser();
 }
 
-export async function importProspects(prospects: any[]) {
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function importProspects(prospects: any[], folderId?: string, folderName?: string) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
 
+  // If folder name provided, create folder or get existing
+  let targetFolderId: string | undefined = folderId;
+  if (folderName) {
+    const trimmedName = folderName.trim().slice(0, 100);
+    if (trimmedName) {
+      // Check if folder with this name already exists
+      const { data: existingFolders } = await supabase
+        .from("prospect_folders")
+        .select("id")
+        .eq("name", trimmedName)
+        .single();
+
+      if (existingFolders && existingFolders.id) {
+        targetFolderId = existingFolders.id;
+      } else {
+        // Create new folder
+        const { data: newFolder, error: folderError } = await supabase
+          .from("prospect_folders")
+          .insert({ name: trimmedName })
+          .select("id")
+          .single();
+
+        if (folderError) {
+          console.error("Error creating folder:", folderError);
+          return { success: false, error: `Could not create folder: ${folderError.message}` };
+        }
+
+        if (newFolder && newFolder.id) {
+          targetFolderId = newFolder.id;
+        }
+      }
+    }
+  }
+
   // Filter out invalid prospects (e.g. missing email)
-  const validProspects = prospects.filter(p => p.email && p.email.includes("@"));
+  const validProspects = prospects
+    .filter(p => p.email && p.email.includes("@"))
+    .map((prospect) => targetFolderId && uuidRegex.test(targetFolderId) ? { ...prospect, folder_id: targetFolderId } : prospect);
 
   if (validProspects.length === 0) {
     return { success: false, error: "No valid prospects found in CSV" };
@@ -37,11 +75,11 @@ export async function importProspects(prospects: any[]) {
 
   revalidatePath("/admin/prospects");
   revalidatePath("/admin");
-  
-  return { success: true, count: data?.length || 0 };
+
+  return { success: true, count: data?.length || 0, folderId: targetFolderId, folderName };
 }
 
-export async function addProspect(prospect: any) {
+export async function addProspect(prospect: any, folderId?: string) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
 
@@ -49,6 +87,7 @@ export async function addProspect(prospect: any) {
     .from("prospects")
     .insert([{
       ...prospect,
+      folder_id: folderId && uuidRegex.test(folderId) ? folderId : null,
       status: prospect.status || "new",
       lead_score: prospect.lead_score || 0
     }])
@@ -92,7 +131,76 @@ export async function getCampaignTemplates() {
   }
 }
 
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export async function getProspectFolders() {
+  await ensureAdmin();
+  const supabase = await getAdminSupabase();
+  const [{ data: folders, error }, { data: prospects }] = await Promise.all([
+    supabase.from("prospect_folders").select("id, name, parent_id, created_at").order("name"),
+    supabase.from("prospects").select("folder_id").is("archived_at", null).is("deleted_at", null)
+  ]);
+  if (error) throw new Error(error.message);
+  const counts = (prospects ?? []).reduce<Record<string, number>>((result, prospect) => {
+    if (prospect.folder_id) result[prospect.folder_id] = (result[prospect.folder_id] ?? 0) + 1;
+    return result;
+  }, {});
+  return (folders ?? []).map((folder) => ({ ...folder, prospect_count: counts[folder.id] ?? 0 }));
+}
+
+export async function createProspectFolder(name: string, parentId?: string) {
+  await ensureAdmin();
+  const supabase = await getAdminSupabase();
+  const trimmedName = name.trim().slice(0, 100);
+  if (!trimmedName) return { success: false, error: "Enter a folder name." };
+  const parent_id = parentId && uuidRegex.test(parentId) ? parentId : null;
+  const { error } = await supabase.from("prospect_folders").insert({ name: trimmedName, parent_id });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/admin/prospects");
+  return { success: true };
+}
+
+export async function renameProspectFolder(id: string, name: string) {
+  await ensureAdmin();
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const trimmedName = name.trim().slice(0, 100);
+  if (!trimmedName) return { success: false, error: "Enter a folder name." };
+  const supabase = await getAdminSupabase();
+  const { error } = await supabase.from("prospect_folders").update({ name: trimmedName }).eq("id", id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/admin/prospects");
+  return { success: true };
+}
+
+export async function deleteProspectFolder(id: string) {
+  await ensureAdmin();
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const supabase = await getAdminSupabase();
+  const { error } = await supabase.from("prospect_folders").delete().eq("id", id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/admin/prospects");
+  return { success: true };
+}
+
+export async function moveProspectsToFolder(ids: string[], folderId?: string) {
+  const user = await requireAdminUser();
+  const supabase = await getAdminSupabase();
+  const validIds = [...new Set(ids)].filter((id) => uuidRegex.test(id)).slice(0, 500);
+  if (!validIds.length) return { success: false, error: "Select at least one prospect." };
+  const folder_id = folderId && uuidRegex.test(folderId) ? folderId : null;
+  const { data: oldRows, error: oldError } = await supabase.from("prospects").select("*").in("id", validIds);
+  if (oldError) return { success: false, error: oldError.message };
+  const { data, error } = await supabase.from("prospects").update({ folder_id }).in("id", validIds).select("id");
+  if (error) return { success: false, error: error.message };
+  await supabase.from("audit_logs").insert((oldRows ?? []).map((row) => ({
+    user_id: user.id,
+    action: "move_folder",
+    table_name: "prospects",
+    record_id: row.id,
+    old_data: row,
+    new_data: { folder_id }
+  })));
+  revalidatePath("/admin/prospects");
+  return { success: true, count: data?.length ?? 0 };
+}
 
 export async function saveCampaignTemplate(template: { 
   name: string; 
@@ -230,6 +338,7 @@ export async function getProspects(options: {
   sortBy?: 'created_at' | 'name' | 'lead_score' | 'status' | 'city';
   sortDirection?: 'asc' | 'desc';
   view?: "active" | "archived" | "deleted";
+  folderId?: string;
 }) {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
@@ -244,7 +353,8 @@ export async function getProspects(options: {
     engagement,
     sortBy = "lead_score",
     sortDirection = "desc",
-    view = "active"
+    view = "active",
+    folderId
   } = options;
 
   const allowedPageSizes = [10, 20, 25, 50, 100];
@@ -261,6 +371,8 @@ export async function getProspects(options: {
 
   if (status) dbQuery = dbQuery.eq("status", status);
   if (city) dbQuery = dbQuery.eq("city", city);
+  if (folderId === "unfiled") dbQuery = dbQuery.is("folder_id", null);
+  else if (folderId && uuidRegex.test(folderId)) dbQuery = dbQuery.eq("folder_id", folderId);
   if (query) dbQuery = dbQuery.or(`name.ilike.%${query}%,email.ilike.%${query}%,company_name.ilike.%${query}%`);
   
   // Apply engagement filter

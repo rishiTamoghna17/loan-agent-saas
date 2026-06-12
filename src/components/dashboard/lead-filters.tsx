@@ -34,6 +34,11 @@ export function LeadFilters({ values }: { values: Record<string, string> }) {
         <option value="status_asc">Status A-Z</option>
         <option value="follow_up_asc">Next follow-up</option>
       </select>
+      <select name="view" defaultValue={values.view || "active"} className="field">
+        <option value="active">Active leads</option>
+        <option value="archived">Archived leads</option>
+        <option value="deleted">Deleted leads</option>
+      </select>
       <input type="hidden" name="pageSize" value={values.pageSize || "20"} />
       <div className="flex gap-2 md:col-span-4">
         <button className="btn-primary" type="submit">Apply filters</button>
