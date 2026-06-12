@@ -111,10 +111,7 @@ export function SignupForm() {
 
     if (result.requiresEmailConfirmation) {
       setIsSubmitting(false);
-      setServerMessage(`Account created. Check ${result.email || values.email} for the confirmation email, then log in.`);
-      setTimeout(() => {
-        router.push(`/login?email=${encodeURIComponent(result.email || values.email)}`);
-      }, 1200);
+      setServerMessage(`Account created. Check ${result.email || values.email} and confirm your email to open the dashboard.`);
       return;
     }
 

@@ -182,7 +182,12 @@ Sender name: BREVO_SMTP_SENDER_NAME
 
 8. In Supabase Auth URL settings, confirm:
    - Site URL points to your production domain.
-   - Redirect URLs include your production auth/dashboard URLs and `/auth/callback?next=/reset-password`.
+   - Redirect URLs include:
+     - `https://your-production-domain/auth/confirm`
+     - `https://your-production-domain/auth/callback`
+     - `http://localhost:3000/auth/confirm`
+     - `http://localhost:3000/auth/callback`
+   - Set `NEXT_PUBLIC_APP_HOST=https://your-production-domain` in production so signup confirmation emails never fall back to localhost.
 9. In Supabase Auth email templates, confirm the confirmation email copy and redirect behavior.
 10. Test with one real signup and confirm the email appears in Brevo's transactional email logs.
 

@@ -8,6 +8,14 @@ import { handleProspectConversion } from "@/lib/conversions";
 
 export const runtime = "nodejs";
 
+function getPublicAppUrl(request: Request) {
+  const configuredHost = process.env.NEXT_PUBLIC_APP_HOST?.trim();
+  if (!configuredHost) return new URL(request.url).origin;
+  return configuredHost.startsWith("http://") || configuredHost.startsWith("https://")
+    ? configuredHost.replace(/\/$/, "")
+    : `https://${configuredHost.replace(/\/$/, "")}`;
+}
+
 export async function POST(request: Request) {
   const formData = await request.formData();
   const services = formData.getAll("services_offered").map(String);
@@ -57,7 +65,10 @@ export async function POST(request: Request) {
   const { password, ...profile } = parsed.data;
   const { data, error } = await supabase.auth.signUp({
     email: profile.email,
-    password
+    password,
+    options: {
+      emailRedirectTo: `${getPublicAppUrl(request)}/auth/confirm?next=/dashboard`
+    }
   });
 
   if (error) {
