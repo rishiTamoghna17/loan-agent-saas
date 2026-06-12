@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { AuthHashRedirect } from "@/components/auth/auth-hash-redirect";
+// @ts-ignore
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthHashRedirect />
+        {children}
+      </body>
     </html>
   );
 }
