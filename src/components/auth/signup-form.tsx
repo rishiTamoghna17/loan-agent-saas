@@ -156,10 +156,38 @@ export function SignupForm() {
           <input type="password" className="field" {...form.register("password")} />
         </Field>
         <Field label="Phone" required error={form.formState.errors.phone?.message}>
-          <input className="field" {...form.register("phone")} />
+          <input 
+            className="field" 
+            type="tel"
+            maxLength={10}
+            inputMode="numeric"
+            {...form.register("phone", {
+              onChange: (e) => {
+                // Keep only digits and restrict to 10
+                const phone = e.target.value.replace(/\D/g, '').slice(0, 10);
+                form.setValue("phone", phone, { shouldDirty: true, shouldValidate: true });
+                if (sameAsPhone) {
+                  form.setValue("whatsapp_number", phone, { shouldDirty: true, shouldValidate: true });
+                }
+              }
+            })} 
+          />
         </Field>
         <Field label="WhatsApp number" required error={form.formState.errors.whatsapp_number?.message}>
-          <input className="field" readOnly={sameAsPhone} {...form.register("whatsapp_number")} />
+          <input 
+            className="field" 
+            type="tel"
+            maxLength={10}
+            inputMode="numeric"
+            readOnly={sameAsPhone} 
+            {...form.register("whatsapp_number", {
+              onChange: (e) => {
+                // Keep only digits and restrict to 10
+                const whatsappNumber = e.target.value.replace(/\D/g, '').slice(0, 10);
+                form.setValue("whatsapp_number", whatsappNumber, { shouldDirty: true, shouldValidate: true });
+              }
+            })} 
+          />
           <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"

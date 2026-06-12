@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 
 type AddressOption = {
   name: string;
@@ -43,6 +43,27 @@ export function PincodeAddressFields({
   const [selectedOption, setSelectedOption] = useState(initialCity);
   const [lookupMessage, setLookupMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const lastReportedAddress = useRef({ city: initialCity, district: initialDistrict, state: initialState, pincode: initialPincode });
+  const lastInitialProps = useRef({ initialCity, initialDistrict, initialState, initialPincode });
+
+  // Sync local state when initial props change
+  useEffect(() => {
+    const last = lastInitialProps.current;
+    if (
+      last.initialCity !== initialCity ||
+      last.initialDistrict !== initialDistrict ||
+      last.initialState !== initialState ||
+      last.initialPincode !== initialPincode
+    ) {
+      setPincode(initialPincode);
+      setCity(initialCity);
+      setDistrict(initialDistrict);
+      setState(initialState);
+      setSelectedOption(initialCity);
+      lastInitialProps.current = { initialCity, initialDistrict, initialState, initialPincode };
+      lastReportedAddress.current = { city: initialCity, district: initialDistrict, state: initialState, pincode: initialPincode };
+    }
+  }, [initialCity, initialDistrict, initialState, initialPincode]);
 
   const requiredMark = required ? <span className="text-red-600">*</span> : null;
   const uniqueOptions = useMemo(
@@ -51,7 +72,18 @@ export function PincodeAddressFields({
   );
 
   useEffect(() => {
-    onAddressChange?.({ city, district, state, pincode });
+    const newAddress = { city, district, state, pincode };
+    const last = lastReportedAddress.current;
+    
+    if (
+      newAddress.city !== last.city ||
+      newAddress.district !== last.district ||
+      newAddress.state !== last.state ||
+      newAddress.pincode !== last.pincode
+    ) {
+      onAddressChange?.(newAddress);
+      lastReportedAddress.current = newAddress;
+    }
   }, [city, district, onAddressChange, pincode, state]);
 
   useEffect(() => {

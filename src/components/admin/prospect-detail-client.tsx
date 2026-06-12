@@ -189,12 +189,14 @@ export function ProspectDetailClient({
                 </div>
               )}
 
-              {(localProspect.city || localProspect.state) && (
+              {(localProspect.city || localProspect.district || localProspect.state || localProspect.pincode) && (
                 <div className="flex items-center gap-3 text-sm text-slate-600">
                   <MapPin className="h-4 w-4 text-slate-400" />
                   <span>
                     {localProspect.city}
+                    {localProspect.district ? `, ${localProspect.district}` : ""}
                     {localProspect.state ? `, ${localProspect.state}` : ""}
+                    {localProspect.pincode ? ` - ${localProspect.pincode}` : ""}
                   </span>
                 </div>
               )}
@@ -210,8 +212,8 @@ export function ProspectDetailClient({
               <form action={handleEdit} className="mt-5 space-y-3 border-t border-slate-100 pt-4">
                 {[
                   ["name", "Contact name"], ["company_name", "Company"], ["email", "Email"], ["phone", "Phone"],
-                  ["city", "City"], ["state", "State"], ["loan_category", "Loan category"],
-                  ["linkedin_url", "LinkedIn URL"], ["website_url", "Website URL"]
+                  ["city", "City"], ["district", "District"], ["state", "State"], ["pincode", "Pincode"], 
+                  ["loan_category", "Loan category"], ["linkedin_url", "LinkedIn URL"], ["website_url", "Website URL"]
                 ].map(([name, label]) => (
                   <label key={name} className="block text-xs font-semibold text-slate-600">{label}
                     <input name={name} defaultValue={localProspect[name] ?? ""} className="field mt-1" />

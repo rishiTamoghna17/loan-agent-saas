@@ -401,7 +401,7 @@ const prospectStatuses = new Set([
 export async function updateProspect(id: string, values: Record<string, FormDataEntryValue | null>) {
   const user = await requireAdminUser();
   const supabase = await getAdminSupabase();
-  const allowed = ["name", "company_name", "email", "phone", "city", "state", "loan_category", "linkedin_url", "website_url", "notes"];
+  const allowed = ["name", "company_name", "email", "phone", "city", "district", "state", "pincode", "loan_category", "linkedin_url", "website_url", "notes"];
   const update: Record<string, string | null | number> = {};
   for (const key of allowed) {
     const value = values[key];

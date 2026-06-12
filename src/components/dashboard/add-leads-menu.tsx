@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { Download, FileSpreadsheet, Loader2, Plus, Upload, X } from "lucide-react";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import { createManualLead, importLeads } from "@/app/dashboard/actions";
 import { LEAD_SOURCES, LOAN_PRODUCTS } from "@/lib/constants";
+import { PincodeAddressFields } from "@/components/address/pincode-address-fields";
 
 const fields = ["name", "phone", "email", "loan_type", "required_amount", "monthly_income", "city", "district", "state", "pincode", "landmark", "source", "message"] as const;
 type LeadDraft = Record<(typeof fields)[number], string>;
@@ -75,8 +76,8 @@ export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
     {modal ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" onMouseDown={(event) => event.target === event.currentTarget && !busy && setModal(null)}>
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-2xl">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white p-5">
-          <div><p className="text-xs font-bold uppercase text-brand-blue">{modal === "manual" ? "Manual entry" : "Spreadsheet import"}</p><h2 className="mt-1 text-xl font-bold text-ink">{modal === "manual" ? "Add a lead" : "Import leads"}</h2></div>
-          <button type="button" className="btn-secondary h-9 w-9 p-0" disabled={busy} onClick={() => setModal(null)} aria-label="Close"><X className="h-4 w-4" /></button>
+          <div><p className="text-xs font-bold uppercase text-brand-blue">{modal === "manual" ? "Lead entry" : "Spreadsheet import"}</p><h2 className="mt-1 text-xl font-bold text-ink">{modal === "manual" ? "Add a lead" : "Import leads"}</h2></div>
+          <button type="button" className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-800 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} onClick={() => setModal(null)} aria-label="Close"><X className="h-5 w-5" /></button>
         </header>
         {modal === "manual" ? <form onSubmit={saveLead} className="p-5"><LeadFields value={lead} onChange={setLead} /><button className="btn-primary mt-5 w-full" disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{busy ? "Adding lead..." : "Add lead"}</button></form> :
           <div className="space-y-5 p-5">
@@ -92,9 +93,105 @@ export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
 }
 
 function LeadFields({ value, onChange }: { value: LeadDraft; onChange: (value: LeadDraft) => void }) {
-  const update = (field: keyof LeadDraft, next: string) => onChange({ ...value, [field]: next });
+  // Use functional updates to avoid depending on `value` in callbacks
+  const update = useCallback((field: keyof LeadDraft, next: string) => {
+    onChange(prevValue => ({ ...prevValue, [field]: next }));
+  }, [onChange]);
+  
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // Keep only digits
+    let phone = e.target.value.replace(/\D/g, '');
+    // Restrict to 10 digits
+    phone = phone.slice(0, 10);
+    update('phone', phone);
+  }, [update]);
+
+  const handleAddressChange = useCallback((address: { city: string; district: string; state: string; pincode: string }) => {
+    onChange(prevValue => ({
+      ...prevValue,
+      city: address.city,
+      district: address.district,
+      state: address.state,
+      pincode: address.pincode
+    }));
+  }, [onChange]);
+
   return <div className="grid gap-4 sm:grid-cols-2">
-    {(["name", "phone", "email", "required_amount", "monthly_income", "city", "district", "state", "pincode", "landmark"] as const).map((field) => <label key={field}><span className="label capitalize">{field.replaceAll("_", " ")}{requiredFields.includes(field) ? " *" : ""}</span><input className="field" required={requiredFields.includes(field)} type={field.includes("amount") || field === "monthly_income" ? "number" : "text"} value={value[field]} onChange={(event) => update(field, event.target.value)} /></label>)}
+    <label>
+      <span className="label">Name *</span>
+      <input 
+        className="field" 
+        required 
+        type="text" 
+        value={value.name} 
+        onChange={(event) => update("name", event.target.value)} 
+      />
+    </label>
+    
+    {/* Phone field with 10-digit restriction */}
+    <label>
+      <span className="label">Phone *</span>
+      <input 
+        className="field" 
+        required 
+        type="tel" 
+        maxLength={10}
+        inputMode="numeric"
+        value={value.phone} 
+        onChange={handlePhoneChange} 
+      />
+    </label>
+    
+    <label>
+      <span className="label">Email</span>
+      <input 
+        className="field" 
+        type="email" 
+        value={value.email} 
+        onChange={(event) => update("email", event.target.value)} 
+      />
+    </label>
+    
+    <label>
+      <span className="label">Required amount *</span>
+      <input 
+        className="field" 
+        required 
+        type="number" 
+        value={value.required_amount} 
+        onChange={(event) => update("required_amount", event.target.value)} 
+      />
+    </label>
+    
+    <label>
+      <span className="label">Monthly income</span>
+      <input 
+        className="field" 
+        type="number" 
+        value={value.monthly_income} 
+        onChange={(event) => update("monthly_income", event.target.value)} 
+      />
+    </label>
+    
+    <label>
+      <span className="label">Landmark</span>
+      <input 
+        className="field" 
+        type="text" 
+        value={value.landmark} 
+        onChange={(event) => update("landmark", event.target.value)} 
+      />
+    </label>
+    
+    <PincodeAddressFields
+      initialCity={value.city}
+      initialDistrict={value.district}
+      initialState={value.state}
+      initialPincode={value.pincode}
+      required={true}
+      onAddressChange={handleAddressChange}
+    />
+    
     <label><span className="label">Loan type *</span><select className="field" value={value.loan_type} onChange={(event) => update("loan_type", event.target.value)}>{LOAN_PRODUCTS.map((item) => <option key={item}>{item}</option>)}</select></label>
     <label><span className="label">Source *</span><select className="field" value={value.source} onChange={(event) => update("source", event.target.value)}>{LEAD_SOURCES.map((item) => <option key={item}>{item}</option>)}</select></label>
     <label className="sm:col-span-2"><span className="label">Message</span><textarea className="field min-h-24" value={value.message} onChange={(event) => update("message", event.target.value)} /></label>

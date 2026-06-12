@@ -3,11 +3,20 @@
 import { useState } from "react";
 import { Plus, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { addProspect } from "@/app/admin/actions";
+import { PincodeAddressFields } from "@/components/address/pincode-address-fields";
 
 export function AddProspectForm() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; error?: string } | null>(null);
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState({ city: "", district: "", state: "", pincode: "" });
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Keep only digits and restrict to 10
+    const formattedPhone = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhone(formattedPhone);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -19,8 +28,11 @@ export function AddProspectForm() {
       name: formData.get("name") as string,
       email: formData.get("email") as string,
       company_name: formData.get("company_name") as string,
-      phone: formData.get("phone") as string,
-      city: formData.get("city") as string,
+      phone: phone,
+      city: address.city,
+      district: address.district,
+      state: address.state,
+      pincode: address.pincode,
       loan_category: formData.get("loan_category") as string,
     };
 
@@ -29,6 +41,8 @@ export function AddProspectForm() {
       setResult(response);
       if (response.success) {
         // Reset form or close after delay
+        setPhone("");
+        setAddress({ city: "", district: "", state: "", pincode: "" });
         setTimeout(() => {
           setIsOpen(false);
           setResult(null);
@@ -91,19 +105,14 @@ export function AddProspectForm() {
             <div>
               <label className="text-sm font-medium text-slate-700">Phone</label>
               <input
-                name="phone"
+                required
                 type="tel"
+                maxLength={10}
+                inputMode="numeric"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
-                placeholder="+91..."
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">City</label>
-              <input
-                name="city"
-                type="text"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
-                placeholder="Mumbai"
+                placeholder="9876543210"
+                value={phone}
+                onChange={handlePhoneChange}
               />
             </div>
             <div className="col-span-2">
@@ -116,8 +125,19 @@ export function AddProspectForm() {
               />
             </div>
             <div className="col-span-2">
+              <PincodeAddressFields
+                initialCity={address.city}
+                initialDistrict={address.district}
+                initialState={address.state}
+                initialPincode={address.pincode}
+                required={true}
+                onAddressChange={setAddress}
+              />
+            </div>
+            <div className="col-span-2">
               <label className="text-sm font-medium text-slate-700">Loan Category</label>
               <select
+                required
                 name="loan_category"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
               >

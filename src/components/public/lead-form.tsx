@@ -121,7 +121,20 @@ export function LeadForm({
             <input className="field" {...form.register("name")} disabled={isTrialExpired} />
           </Field>
           <Field label="Phone" error={errors.phone}>
-            <input className="field" {...form.register("phone")} disabled={isTrialExpired} />
+            <input 
+              className="field" 
+              type="tel"
+              maxLength={10}
+              inputMode="numeric"
+              {...form.register("phone", {
+                onChange: (e) => {
+                  // Keep only digits and restrict to 10
+                  const phone = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  form.setValue("phone", phone, { shouldDirty: true, shouldValidate: true });
+                }
+              })} 
+              disabled={isTrialExpired} 
+            />
           </Field>
           <Field label="Email (optional)" error={errors.email}>
             <input className="field" type="email" {...form.register("email")} disabled={isTrialExpired} />
