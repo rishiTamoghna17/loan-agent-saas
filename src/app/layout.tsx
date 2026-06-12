@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AuthHashRedirect } from "@/components/auth/auth-hash-redirect";
-// @ts-ignore
+import { ToastProvider } from "@/components/ui/toast-provider";
+import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AuthHashRedirect />
+        <ToastProvider />
         {children}
       </body>
     </html>

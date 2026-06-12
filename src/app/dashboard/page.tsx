@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, BellRing, Building2, Download, Globe2, MapPin, Mail, Phone, UserRound } from "lucide-react";
 import { ContactLeadButton } from "@/components/dashboard/contact-lead-button";
+import { AddLeadsMenu } from "@/components/dashboard/add-leads-menu";
 import { LeadActionsPanel } from "@/components/dashboard/lead-actions-panel";
 import { LeadFilters } from "@/components/dashboard/lead-filters";
 import { LeadPagination } from "@/components/dashboard/lead-pagination";
@@ -208,10 +209,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
       <section className="card mt-6 overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-ink">Leads</h2>
-          <a href={`/api/leads/export?${exportParams.toString()}`} className="btn-secondary">
-            <Download className="h-4 w-4" />
-            Export CSV
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <AddLeadsMenu disabled={isTrialExpired} />
+            <a href={`/api/leads/export?${exportParams.toString()}`} className="btn-secondary"><Download className="h-4 w-4" /> Export CSV</a>
+          </div>
         </div>
         <LeadFilters values={filterValues} />
         <div className="overflow-x-auto">

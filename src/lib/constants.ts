@@ -21,7 +21,7 @@ export const LOAN_PRODUCTS = [
 
 export const LEAD_STATUSES = ["new", "follow_up", "closed", "rejected"] as const;
 
-export const LEAD_SOURCES = ["Website", "WhatsApp", "Facebook", "Instagram", "Google", "Referral"] as const;
+export const LEAD_SOURCES = ["Website", "WhatsApp", "Facebook", "Instagram", "Google", "Referral", "Manual"] as const;
 
 export const STATUS_LABELS: Record<(typeof LEAD_STATUSES)[number], string> = {
   new: "New",

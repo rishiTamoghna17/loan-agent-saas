@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { uploadAgentLogoWithClient } from "@/lib/logo-upload";
-import { deleteLeadSchema, followUpSchema, followUpStatusSchema, leadNoteSchema, leadStatusSchema, notificationPreferencesSchema, profileSchema } from "@/lib/schemas";
+import { deleteLeadSchema, followUpSchema, followUpStatusSchema, leadNoteSchema, leadSchema, leadStatusSchema, notificationPreferencesSchema, profileSchema } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { zonedDateTimeToUtc } from "@/lib/follow-ups";
 
@@ -25,6 +25,62 @@ function isDashboardLocked(agent: { plan_status?: string | null; trial_ends_at?:
   if (agent.plan_status === "active") return false;
   if (agent.plan_status === "expired" || agent.plan_status === "cancelled") return true;
   return agent.plan_status === "trial" && agent.trial_ends_at ? new Date(agent.trial_ends_at).getTime() <= Date.now() : false;
+}
+
+export type LeadMutationResult = {
+  ok: boolean;
+  message: string;
+  imported?: number;
+  rejected?: Array<{ row: number; reason: string }>;
+};
+
+function leadInsertValues(agentId: string, values: ReturnType<typeof leadSchema.parse>) {
+  return {
+    agent_id: agentId,
+    name: values.name,
+    phone: values.phone,
+    email: values.email || null,
+    loan_type: values.loan_type,
+    required_amount: Number(values.required_amount),
+    monthly_income: values.monthly_income === "" || values.monthly_income == null ? null : Number(values.monthly_income),
+    city: values.city,
+    district: values.district,
+    state: values.state,
+    pincode: values.pincode,
+    landmark: values.landmark || null,
+    source: values.source,
+    message: values.message || null
+  };
+}
+
+export async function createManualLead(input: unknown): Promise<LeadMutationResult> {
+  const parsed = leadSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.errors[0]?.message || "Check the lead details." };
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { ok: false, message: "Your account is read-only because the trial has ended." };
+  const { error } = await supabase.from("leads").insert(leadInsertValues(agent.id, parsed.data));
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/dashboard");
+  return { ok: true, message: "Lead added successfully." };
+}
+
+export async function importLeads(input: unknown): Promise<LeadMutationResult> {
+  if (!Array.isArray(input) || !input.length) return { ok: false, message: "Choose a file containing at least one lead." };
+  if (input.length > 1000) return { ok: false, message: "Import a maximum of 1,000 leads at a time." };
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { ok: false, message: "Your account is read-only because the trial has ended." };
+  const valid: ReturnType<typeof leadInsertValues>[] = [];
+  const rejected: Array<{ row: number; reason: string }> = [];
+  input.forEach((row, index) => {
+    const parsed = leadSchema.safeParse(row);
+    if (parsed.success) valid.push(leadInsertValues(agent.id, parsed.data));
+    else rejected.push({ row: index + 2, reason: parsed.error.errors[0]?.message || "Invalid lead" });
+  });
+  if (!valid.length) return { ok: false, message: "No valid leads were found.", rejected };
+  const { error } = await supabase.from("leads").insert(valid);
+  if (error) return { ok: false, message: error.message, rejected };
+  revalidatePath("/dashboard");
+  return { ok: true, message: `${valid.length} lead${valid.length === 1 ? "" : "s"} imported successfully.`, imported: valid.length, rejected };
 }
 
 export async function updateLeadStatus(formData: FormData) {
