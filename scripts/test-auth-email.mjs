@@ -6,7 +6,8 @@ loadLocalEnv();
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const redirectTo = process.env.AUTH_EMAIL_TEST_REDIRECT_TO || "http://localhost:3000/dashboard";
+const appHost = (process.env.NEXT_PUBLIC_APP_HOST || "http://localhost:3000").replace(/\/$/, "");
+const redirectTo = process.env.AUTH_EMAIL_TEST_REDIRECT_TO || `${appHost}/auth/confirm?next=/dashboard`;
 
 if (!supabaseUrl || !anonKey || !serviceRoleKey) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, or SUPABASE_SERVICE_ROLE_KEY.");

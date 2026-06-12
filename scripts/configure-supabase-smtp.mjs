@@ -10,6 +10,7 @@ const smtpUser = process.env.BREVO_SMTP_USERNAME;
 const smtpPass = process.env.BREVO_SMTP_PASSWORD;
 const senderEmail = process.env.BREVO_SMTP_SENDER_EMAIL;
 const senderName = process.env.BREVO_SMTP_SENDER_NAME || "LeadHub";
+const appHost = normalizeAppHost(process.env.NEXT_PUBLIC_APP_HOST);
 
 const missing = [];
 if (!supabaseAccessToken) missing.push("SUPABASE_ACCESS_TOKEN");
@@ -17,6 +18,7 @@ if (!projectRef) missing.push("SUPABASE_PROJECT_REF or NEXT_PUBLIC_SUPABASE_URL"
 if (!smtpUser) missing.push("BREVO_SMTP_USERNAME");
 if (!smtpPass) missing.push("BREVO_SMTP_PASSWORD");
 if (!senderEmail) missing.push("BREVO_SMTP_SENDER_EMAIL");
+if (!appHost) missing.push("NEXT_PUBLIC_APP_HOST");
 
 if (missing.length) {
   console.error(`Missing required env values: ${missing.join(", ")}`);
@@ -38,7 +40,18 @@ const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}
     smtp_user: smtpUser.trim(),
     smtp_pass: smtpPass,
     smtp_admin_email: senderEmail.trim(),
-    smtp_sender_name: senderName.trim()
+    smtp_sender_name: senderName.trim(),
+    site_url: appHost,
+    uri_allow_list: [
+      `${appHost}/auth/confirm`,
+      `${appHost}/auth/confirm?next=/dashboard`,
+      `${appHost}/auth/callback`,
+      `${appHost}/auth/callback?next=/reset-password`,
+      "http://localhost:3000/auth/confirm",
+      "http://localhost:3000/auth/callback",
+      "http://localhost:3001/auth/confirm",
+      "http://localhost:3001/auth/callback"
+    ].join(",")
   })
 });
 
@@ -56,6 +69,8 @@ console.log(`SMTP port: ${smtpPort}`);
 console.log(`SMTP user: ${smtpUser.trim()}`);
 console.log(`Sender email: ${senderEmail.trim()}`);
 console.log(`Sender name: ${senderName.trim()}`);
+console.log(`Auth site URL: ${appHost}`);
+console.log(`Confirmation redirect: ${appHost}/auth/confirm?next=/dashboard`);
 console.log("SMTP password was sent but not printed.");
 
 function getProjectRefFromUrl(value) {
@@ -66,4 +81,12 @@ function getProjectRefFromUrl(value) {
   } catch {
     return "";
   }
+}
+
+function normalizeAppHost(value) {
+  if (!value) return "";
+  const normalized = value.trim().replace(/\/$/, "");
+  return normalized.startsWith("http://") || normalized.startsWith("https://")
+    ? normalized
+    : `https://${normalized}`;
 }

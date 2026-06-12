@@ -277,6 +277,8 @@ After configuring SMTP, test the signup email handoff with:
 npm run test:auth-email
 ```
 
+`npm run configure:smtp` also updates the Supabase Auth Site URL and redirect allowlist using `NEXT_PUBLIC_APP_HOST`. This prevents confirmation emails from falling back to `http://localhost:3000`.
+
 If this still returns `over_email_send_rate_limit`, Supabase is still using the built-in mailer or the SMTP config has not propagated yet. If it returns an SMTP authentication/IP error, fix the Brevo SMTP key, sender, or authorized IP settings.
 
 The app keeps normal Supabase email/password signup. If Supabase returns an email send-rate error, the signup page shows:
