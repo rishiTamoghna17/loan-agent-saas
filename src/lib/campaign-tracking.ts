@@ -20,6 +20,39 @@ export function normalizeBrevoMessageId(value: unknown) {
   return value.trim().replace(/^<|>$/g, "");
 }
 
+export function buildBrevoCampaignTags(campaignId: string, templateId: string) {
+  return ["leadhub", `campaign_${campaignId}`, `template_${templateId}`];
+}
+
+export function extractBrevoTags(value: unknown) {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    // Brevo may send a single tag string rather than JSON.
+  }
+  return [value];
+}
+
+export function extractCampaignIdFromBrevoTags(value: unknown) {
+  for (const tag of extractBrevoTags(value)) {
+    const match = tag.match(/^campaign_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+    if (match) return match[1];
+  }
+  return "";
+}
+
+export function extractTemplateIdFromBrevoTags(value: unknown) {
+  for (const tag of extractBrevoTags(value)) {
+    const match = tag.match(/^template_(.+)$/);
+    if (match) return match[1];
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tag)) return tag;
+  }
+  return "";
+}
+
 export function getBrevoEventType(value: unknown) {
   if (typeof value !== "string") return "";
   return value

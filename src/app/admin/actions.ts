@@ -2,7 +2,7 @@
 
 import { getAdminSupabase, requireAdminUser } from "@/lib/admin-auth";
 import { getCampaignBrochureAttachment } from "@/lib/campaign-attachments";
-import { buildCampaignLinks, maskProviderError } from "@/lib/campaign-tracking";
+import { buildBrevoCampaignTags, buildCampaignLinks, maskProviderError } from "@/lib/campaign-tracking";
 import { classifyBrevoError, getBrevoApiHealth } from "@/lib/brevo";
 import {
   createCampaignRenderContext,
@@ -637,9 +637,9 @@ export async function sendCampaignEmail(prospectIds: string[], campaignTemplate:
           subject: rendered.subject,
           htmlContent: rendered.htmlContent,
           ...(brochure.attachments.length ? { attachment: brochure.attachments } : {}),
-          tags: ["campaign", campaignTemplate],
+          tags: buildBrevoCampaignTags(campaignRow.id, campaignTemplate),
           headers: {
-            "X-Mailin-Tag": campaignTemplate
+            "X-LeadHub-Campaign-ID": campaignRow.id
           }
         })
       });

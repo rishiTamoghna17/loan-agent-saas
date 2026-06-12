@@ -30,6 +30,15 @@ const attachments = loadTsModule("src/lib/campaign-attachments.ts");
 
 const baseUrl = tracking.getCampaignBaseUrl();
 const links = tracking.buildCampaignLinks("template-test-prospect");
+const campaignId = "280918da-d3d8-4aa0-91cb-15ec266f8108";
+const templateId = "472faf1a-e855-4684-98fc-31589ce943c6";
+const brevoTags = tracking.buildBrevoCampaignTags(campaignId, templateId);
+if (tracking.extractCampaignIdFromBrevoTags(JSON.stringify(brevoTags)) !== campaignId) {
+  throw new Error("Brevo campaign ID tag could not be recovered.");
+}
+if (tracking.extractTemplateIdFromBrevoTags(JSON.stringify(brevoTags)) !== templateId) {
+  throw new Error("Brevo template ID tag could not be recovered.");
+}
 const context = templates.createCampaignRenderContext({
   prospect: {
     id: "template-test-prospect",

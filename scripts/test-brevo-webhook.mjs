@@ -78,6 +78,7 @@ try {
         event,
         "message-id": `<${messageId}>`,
         email,
+        tag: JSON.stringify(["leadhub", `campaign_${campaign.id}`, "template_brevo_webhook_test"]),
         ts: Math.floor(Date.now() / 1000)
       })
     });
@@ -85,6 +86,21 @@ try {
     if (!response.ok) {
       throw new Error(`Webhook ${event} failed: HTTP ${response.status} ${await response.text()}`);
     }
+  }
+
+  const tagMatchResponse = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      event: "delivered",
+      "message-id": `<different-smtp-id-${now}@mail.brevo.local>`,
+      email,
+      tag: JSON.stringify(["leadhub", `campaign_${campaign.id}`, "template_brevo_webhook_test"]),
+      ts: Math.floor(Date.now() / 1000)
+    })
+  });
+  if (!tagMatchResponse.ok) {
+    throw new Error(`Webhook campaign-tag match failed: HTTP ${tagMatchResponse.status} ${await tagMatchResponse.text()}`);
   }
 
   const unmatchedResponse = await fetch(webhookUrl, {

@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { createClient } from "@supabase/supabase-js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -48,14 +49,38 @@ export function getServerDb() {
 }
 
 export async function insertAgentProfile(row: AgentProfileRow) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
   const projectRef = process.env.SUPABASE_PROJECT_REF || getProjectRefFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+  if (supabaseUrl && serviceRoleKey) {
+    return await insertAgentProfileWithSupabase(row, supabaseUrl, serviceRoleKey);
+  }
 
   if (accessToken && projectRef) {
     return await insertAgentProfileWithManagementApi(row, accessToken, projectRef);
   }
 
   return await insertAgentProfileWithPostgres(row);
+}
+
+async function insertAgentProfileWithSupabase(row: AgentProfileRow, supabaseUrl: string, serviceRoleKey: string) {
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+  const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(row.user_id);
+  if (authError || !authUser.user) {
+    throw new Error("Could not create the agent profile because the Auth user does not exist. Try logging in or resetting your password.");
+  }
+
+  const { data, error } = await supabase
+    .from("agents")
+    .insert(row)
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 async function insertAgentProfileWithPostgres(row: AgentProfileRow) {

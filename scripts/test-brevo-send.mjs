@@ -27,6 +27,7 @@ function loadTsModule(relativePath) {
 
 const templates = loadTsModule("src/lib/campaign-templates.ts");
 const attachments = loadTsModule("src/lib/campaign-attachments.ts");
+const tracking = loadTsModule("src/lib/campaign-tracking.ts");
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -140,7 +141,8 @@ Regards,
       subject: rendered.subject,
       htmlContent: rendered.htmlContent,
       ...(brochure.attachments.length ? { attachment: brochure.attachments } : {}),
-      tags: ["campaign", "brevo_send_test"]
+      tags: tracking.buildBrevoCampaignTags(campaign.id, template.id),
+      headers: { "X-LeadHub-Campaign-ID": campaign.id }
     })
   });
 

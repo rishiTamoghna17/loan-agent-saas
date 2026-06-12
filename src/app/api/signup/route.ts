@@ -68,6 +68,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Signup did not return a user. Check your Supabase auth settings." }, { status: 500 });
   }
 
+  // Supabase may return an obfuscated user with no identities when the email
+  // already exists. That UUID is intentionally not present in auth.users.
+  if (!data.user.identities?.length) {
+    return NextResponse.json(
+      { error: "An account may already exist for this email. Please log in or reset your password." },
+      { status: 400 }
+    );
+  }
+
   let logoUrl = profile.logo_url || null;
 
   try {

@@ -3,6 +3,8 @@ import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   appendCampaignEvent,
+  extractCampaignIdFromBrevoTags,
+  extractTemplateIdFromBrevoTags,
   getBrevoEventType,
   hasCampaignEvent,
   normalizeBrevoMessageId
@@ -62,7 +64,7 @@ function getEventTimestamp(event: BrevoWebhookEvent) {
 
 function sanitizeWebhookPayload(event: BrevoWebhookEvent) {
   const safe: Record<string, unknown> = {};
-  for (const key of ["event", "type", "message-id", "messageId", "message_id", "email", "link", "ts", "date", "timestamp", "tag"]) {
+  for (const key of ["event", "type", "message-id", "messageId", "message_id", "email", "link", "ts", "date", "timestamp", "tag", "tags"]) {
     const value = event[key];
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
       safe[key] = typeof value === "string" ? value.slice(0, 2000) : value;
@@ -134,12 +136,54 @@ export async function POST(req: Request) {
         continue;
       }
 
+      const occurredAt = getEventTimestamp(event);
+      const tagValue = event.tag || event.tags;
+      const taggedCampaignId = extractCampaignIdFromBrevoTags(tagValue);
+      const templateId = extractTemplateIdFromBrevoTags(tagValue);
       const idCandidates = Array.from(new Set([messageId, `<${messageId}>`]));
-      const { data: campaign, error: campaignError } = await supabase
+      let matchStrategy = "message_id";
+      let campaignError: { message: string } | null = null;
+      let campaign: { id: string; prospect_id: string; event_history: unknown } | null = null;
+
+      const exactResult = await supabase
         .from("email_campaigns")
         .select("id, prospect_id, event_history")
         .in("message_id", idCandidates)
         .maybeSingle();
+      campaign = exactResult.data;
+      campaignError = exactResult.error;
+
+      if (!campaign && taggedCampaignId) {
+        const taggedResult = await supabase
+          .from("email_campaigns")
+          .select("id, prospect_id, event_history")
+          .eq("id", taggedCampaignId)
+          .maybeSingle();
+        campaign = taggedResult.data;
+        campaignError = taggedResult.error;
+        matchStrategy = "campaign_tag";
+      }
+
+      if (!campaign && typeof event.email === "string" && event.email.includes("@")) {
+        const eventTime = new Date(occurredAt).getTime();
+        const from = new Date(eventTime - 48 * 60 * 60 * 1000).toISOString();
+        let fallbackQuery = supabase
+          .from("email_campaigns")
+          .select("id, prospect_id, event_history, email_sent_at, template_id, prospects!inner(email)")
+          .ilike("prospects.email", event.email.trim())
+          .not("email_sent_at", "is", null)
+          .gte("email_sent_at", from)
+          .lte("email_sent_at", occurredAt)
+          .order("email_sent_at", { ascending: false })
+          .limit(2);
+        if (templateId) fallbackQuery = fallbackQuery.eq("template_id", templateId);
+        const fallbackResult = await fallbackQuery;
+        if (!fallbackResult.error && fallbackResult.data?.length === 1) {
+          campaign = fallbackResult.data[0];
+          campaignError = null;
+          matchStrategy = "unique_recipient_window";
+        }
+      }
 
       if (campaignError || !campaign) {
         unmatched++;
@@ -153,7 +197,6 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const occurredAt = getEventTimestamp(event);
       const alreadyScored = hasCampaignEvent(campaign.event_history, eventType);
       const eventHistory = appendCampaignEvent(campaign.event_history, {
         event_type: eventType,
@@ -161,7 +204,8 @@ export async function POST(req: Request) {
         message_id: messageId,
         occurred_at: occurredAt,
         link: typeof event.link === "string" ? event.link : null,
-        email: typeof event.email === "string" ? event.email : null
+        email: typeof event.email === "string" ? event.email : null,
+        matched_by: matchStrategy
       });
 
       const updates: Record<string, unknown> = {
