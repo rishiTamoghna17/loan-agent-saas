@@ -41,16 +41,57 @@ function getTransporter() {
   });
 }
 
-export async function sendNewLeadEmail(input: LeadNotification) {
-  const transporter = getTransporter();
+async function sendBrevoEmail(message: {
+  to: { email: string; name?: string };
+  subject: string;
+  text: string;
+  html: string;
+}) {
+  const apiKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.BREVO_SMTP_SENDER_EMAIL;
   const senderName = process.env.BREVO_SMTP_SENDER_NAME || "LeadHub";
 
-  if (!transporter || !senderEmail) {
-    console.warn("Lead notification email skipped: SMTP env is not configured.");
-    return;
+  if (apiKey && senderEmail) {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        sender: { name: senderName, email: senderEmail },
+        to: [message.to],
+        subject: message.subject,
+        textContent: message.text,
+        htmlContent: message.html,
+        tags: ["leadhub-agent-notification"]
+      }),
+      cache: "no-store"
+    });
+    const result = await response.json().catch(() => ({ message: response.statusText }));
+    if (!response.ok) {
+      const providerMessage = result && typeof result === "object" && "message" in result
+        ? String(result.message)
+        : response.statusText;
+      throw new Error(`Brevo API request failed (${response.status}): ${providerMessage}`);
+    }
+    return { messageId: typeof result.messageId === "string" ? result.messageId : null };
   }
 
+  const transporter = getTransporter();
+  if (!transporter || !senderEmail) throw new Error("Brevo API and SMTP are not configured.");
+  const result = await transporter.sendMail({
+    from: `"${senderName}" <${senderEmail}>`,
+    to: message.to.email,
+    subject: message.subject,
+    text: message.text,
+    html: message.html
+  });
+  return { messageId: result.messageId || null };
+}
+
+export async function sendNewLeadEmail(input: LeadNotification) {
   const subject = `New Lead Received - ${input.leadName}`;
   const text = [
     "New Lead Received",
@@ -65,9 +106,8 @@ export async function sendNewLeadEmail(input: LeadNotification) {
     `Open dashboard: ${input.dashboardUrl}`
   ].join("\n");
 
-  await transporter.sendMail({
-    from: `"${senderName}" <${senderEmail}>`,
-    to: input.agentEmail,
+  await sendBrevoEmail({
+    to: { email: input.agentEmail, name: input.agentName },
     subject,
     text,
     html: `
@@ -91,11 +131,6 @@ export async function sendNewLeadEmail(input: LeadNotification) {
 }
 
 export async function sendOverdueFollowUpDigest(input: OverdueDigestInput) {
-  const transporter = getTransporter();
-  const senderEmail = process.env.BREVO_SMTP_SENDER_EMAIL;
-  const senderName = process.env.BREVO_SMTP_SENDER_NAME || "LeadHub";
-  if (!transporter || !senderEmail) throw new Error("SMTP is not configured.");
-
   const items = input.followUps.map((item) => `
     <tr>
       <td style="border:1px solid #dbe6f3;padding:10px">${escapeHtml(item.leadName)}</td>
@@ -105,9 +140,8 @@ export async function sendOverdueFollowUpDigest(input: OverdueDigestInput) {
     </tr>
   `).join("");
 
-  return transporter.sendMail({
-    from: `"${senderName}" <${senderEmail}>`,
-    to: input.agentEmail,
+  return sendBrevoEmail({
+    to: { email: input.agentEmail, name: input.agentName },
     subject: `${input.followUps.length} overdue follow-up${input.followUps.length === 1 ? "" : "s"} - LeadHub`,
     text: `Hi ${input.agentName},\n\nYou have ${input.followUps.length} overdue follow-ups. Open your dashboard: ${input.dashboardUrl}`,
     html: `

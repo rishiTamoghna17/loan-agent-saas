@@ -66,14 +66,50 @@ export function FollowUpControls({
       )}
 
       {editing ? (
-        <form action={saveFollowUp} className="mt-2 space-y-2">
-          {pending ? <input type="hidden" name="id" value={pending.id} /> : null}
-          <input type="hidden" name="lead_id" value={leadId} />
-          <input type="hidden" name="timezone" value={timezone} />
-          <input name="due_at" type="datetime-local" required className="field text-xs" disabled={disabled} />
-          <input name="note" placeholder="Follow-up note" defaultValue={pending?.note ?? ""} className="field text-xs" disabled={disabled} />
-          <PendingButton className="btn-primary px-2 py-1 text-xs" pendingText="Scheduling..." disabled={disabled}>Save follow-up</PendingButton>
-        </form>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={pending ? "Reschedule follow-up" : "Schedule follow-up"}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setEditing(false);
+          }}
+        >
+          <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div>
+                <p className="font-semibold text-ink">{pending ? "Reschedule follow-up" : "Schedule follow-up"}</p>
+                <p className="mt-1 text-xs text-slate-500">Choose when this customer should be contacted.</p>
+              </div>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              aria-label="Close follow-up editor"
+              title="Close"
+                className="rounded-md border border-slate-200 bg-white p-2 text-slate-500 hover:text-slate-900"
+            >
+                <X className="h-4 w-4" />
+            </button>
+          </div>
+            <form action={saveFollowUp} className="space-y-4">
+            {pending ? <input type="hidden" name="id" value={pending.id} /> : null}
+            <input type="hidden" name="lead_id" value={leadId} />
+            <input type="hidden" name="timezone" value={timezone} />
+              <label className="block">
+                <span className="label">Follow-up date and time</span>
+                <input name="due_at" type="datetime-local" required className="field" disabled={disabled} />
+              </label>
+              <label className="block">
+                <span className="label">Note</span>
+                <textarea name="note" placeholder="What should you discuss?" defaultValue={pending?.note ?? ""} className="field min-h-24" disabled={disabled} />
+              </label>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setEditing(false)} className="btn-secondary">Cancel</button>
+                <PendingButton className="btn-primary" pendingText="Scheduling..." disabled={disabled}>Save follow-up</PendingButton>
+              </div>
+          </form>
+          </div>
+        </div>
       ) : null}
     </div>
   );

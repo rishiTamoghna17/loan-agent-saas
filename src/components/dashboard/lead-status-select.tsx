@@ -15,7 +15,7 @@ export function LeadStatusSelect({ leadId, status }: { leadId: string; status: L
       <select
         name="status"
         defaultValue={status}
-        className="field min-w-36"
+        className="field min-w-24"
         disabled={isPending}
         onChange={() => {
           startTransition(() => {

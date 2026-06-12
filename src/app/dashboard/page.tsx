@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, BellRing, Building2, Download, Globe2, MapPin, Mail, Phone, Trash2, UserRound } from "lucide-react";
-import { addLeadNote, deleteLead } from "./actions";
+import { AlertTriangle, BellRing, Building2, Download, Globe2, MapPin, Mail, Phone, UserRound } from "lucide-react";
 import { ContactLeadButton } from "@/components/dashboard/contact-lead-button";
-import { FollowUpControls } from "@/components/dashboard/follow-up-controls";
+import { LeadActionsPanel } from "@/components/dashboard/lead-actions-panel";
 import { LeadFilters } from "@/components/dashboard/lead-filters";
 import { LeadPagination } from "@/components/dashboard/lead-pagination";
 import { LeadStatusSelect } from "@/components/dashboard/lead-status-select";
-import { PendingButton } from "@/components/ui/pending-button";
 import { SUPPORT_CONTACT } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { classifyFollowUp, formatFollowUpDate } from "@/lib/follow-ups";
@@ -217,18 +215,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
         </div>
         <LeadFilters values={filterValues} />
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1160px] text-left text-sm">
+          <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">Loan type</th>
-                <th className="px-4 py-3">Amount</th>
-                <th className="px-4 py-3">City</th>
-                <th className="px-4 py-3">Source</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Created</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="w-[17%] px-4 py-3">Name</th>
+                <th className="w-[12%] px-4 py-3">Phone</th>
+                <th className="w-[12%] px-4 py-3">Loan type</th>
+                <th className="w-[10%] px-4 py-3">Amount</th>
+                <th className="w-[14%] px-4 py-3">City</th>
+                <th className="w-[9%] px-4 py-3">Source</th>
+                <th className="w-[12%] px-4 py-3">Status</th>
+                <th className="w-[9%] px-4 py-3">Created</th>
+                <th className="w-[15%] px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -257,34 +255,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
                     {isTrialExpired ? <span className="text-sm text-slate-500">Locked</span> : <LeadStatusSelect leadId={lead.id} status={lead.status} />}
                   </td>
                   <td className="px-4 py-4">{formatDate(lead.created_at)}</td>
-                  <td className="space-y-2 px-4 py-4">
-                    <div className="flex flex-wrap gap-2">
+                  <td className="px-4 py-4">
+                    <div className="flex items-start gap-2">
                       <ContactLeadButton agentId={agent.id} leadName={lead.name} phone={lead.phone} />
-                      <form action={deleteLead}>
-                        <input type="hidden" name="lead_id" value={lead.id} />
-                        <PendingButton className="btn-secondary text-red-600" pendingText="Deleting..." disabled={isTrialExpired}>
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </PendingButton>
-                      </form>
+                      <LeadActionsPanel
+                        leadId={lead.id}
+                        agentId={agent.id}
+                        leadName={lead.name}
+                        timezone={timezone}
+                        notes={lead.lead_notes ?? []}
+                        followUps={lead.lead_follow_ups ?? []}
+                        disabled={isTrialExpired}
+                      />
                     </div>
-                    <form action={addLeadNote} className="flex gap-2">
-                      <input type="hidden" name="lead_id" value={lead.id} />
-                      <input type="hidden" name="agent_id" value={agent.id} />
-                      <input name="note" className="field min-w-56" placeholder="Add note" disabled={isTrialExpired} />
-                      <PendingButton className="btn-secondary" pendingText="Adding..." disabled={isTrialExpired}>Add</PendingButton>
-                    </form>
-                    <FollowUpControls leadId={lead.id} timezone={timezone} followUps={lead.lead_follow_ups ?? []} disabled={isTrialExpired} />
-                    {"lead_notes" in lead && Array.isArray(lead.lead_notes) && lead.lead_notes.length ? (
-                      <div className="space-y-1 rounded-md bg-slate-50 p-2">
-                        {lead.lead_notes.slice(0, 4).map((note: { id: string; note: string; created_at?: string }) => (
-                          <p key={note.id} className="text-xs text-slate-600">
-                            {note.note}
-                            {note.created_at ? <span className="block text-[11px] text-slate-400">{formatDate(note.created_at)}</span> : null}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
                   </td>
                 </tr>
               ))}

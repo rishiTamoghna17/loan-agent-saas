@@ -34,32 +34,36 @@ export async function GET(request: Request) {
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  const results: Array<{ agentId: string; result: string; detail?: string; itemCount?: number }> = [];
 
   for (const preference of preferences ?? []) {
     const agent = Array.isArray(preference.agents) ? preference.agents[0] : preference.agents;
     const trialExpired = agent?.plan_status === "trial" && agent.trial_ends_at && new Date(agent.trial_ends_at).getTime() <= now.getTime();
     if (!agent || ["expired", "cancelled"].includes(agent.plan_status) || trialExpired) {
       skipped++;
+      results.push({ agentId: preference.agent_id, result: "skipped", detail: "Agent plan is inactive." });
       continue;
     }
 
     const local = getLocalDateParts(now, preference.timezone);
-    if (local.hour !== preference.digest_hour) {
-      skipped++;
-      continue;
-    }
-
-    const { data: followUps } = await supabase
+    const { data: followUps, error: followUpsError } = await supabase
       .from("lead_follow_ups")
       .select("id,due_at,note,leads!inner(name,phone,loan_type)")
       .eq("agent_id", preference.agent_id)
       .eq("status", "pending")
-      .lt("due_at", now.toISOString())
+      .lte("due_at", now.toISOString())
       .order("due_at", { ascending: true })
       .limit(100);
 
+    if (followUpsError) {
+      failed++;
+      results.push({ agentId: preference.agent_id, result: "failed", detail: followUpsError.message });
+      continue;
+    }
+
     if (!followUps?.length) {
       skipped++;
+      results.push({ agentId: preference.agent_id, result: "skipped", detail: "No due follow-ups." });
       continue;
     }
 
@@ -77,6 +81,12 @@ export async function GET(request: Request) {
 
     if (deliveryError || !delivery) {
       skipped++;
+      results.push({
+        agentId: preference.agent_id,
+        result: "skipped",
+        detail: deliveryError?.message || "A reminder delivery already exists for today.",
+        itemCount: followUps.length
+      });
       continue;
     }
 
@@ -115,21 +125,33 @@ export async function GET(request: Request) {
         .eq("agent_id", preference.agent_id)
         .eq("status", "pending");
       if (completionError) {
-        console.error("Reminder email sent, but follow-up tasks could not be marked completed.", {
-          deliveryId: delivery.id,
-          agentId: preference.agent_id,
-          error: completionError.message
-        });
+        const { error: fallbackCompletionError } = await supabase
+          .from("lead_follow_ups")
+          .update({ status: "completed", completed_at: completedAt })
+          .in("id", followUps.map((followUp) => followUp.id))
+          .eq("agent_id", preference.agent_id)
+          .eq("status", "pending");
+        if (fallbackCompletionError) {
+          throw new Error(`Email sent, but follow-up completion failed: ${fallbackCompletionError.message}`);
+        }
       }
       sent++;
+      results.push({ agentId: preference.agent_id, result: "sent", itemCount: followUps.length });
     } catch (sendError) {
       await supabase.from("notification_deliveries").update({
         status: "failed",
         error_message: sendError instanceof Error ? sendError.message.slice(0, 500) : "Reminder email failed"
       }).eq("id", delivery.id);
       failed++;
+      results.push({
+        agentId: preference.agent_id,
+        result: "failed",
+        detail: sendError instanceof Error ? sendError.message : "Reminder email failed",
+        itemCount: followUps.length
+      });
     }
   }
 
-  return NextResponse.json({ ok: true, sent, skipped, failed });
+  console.info("Follow-up reminder cron completed.", { sent, skipped, failed, results });
+  return NextResponse.json({ ok: failed === 0, sent, skipped, failed, results });
 }
