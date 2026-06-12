@@ -27,7 +27,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
   const [leadResult, eventResult, followUpResult, preferenceResult] = await Promise.all([
     supabase
       .from("leads")
-      .select("*, lead_notes(id, note, created_at), lead_follow_ups(id,due_at,note,status,completed_at,created_at)")
+      .select("*, lead_notes(id, note, created_at), lead_follow_ups(id,due_at,note,status,completed_at,completion_source,created_at)")
       .eq("agent_id", agent.id)
       .order("created_at", { ascending: false }),
     supabase.from("agent_events").select("event_type").eq("agent_id", agent.id),

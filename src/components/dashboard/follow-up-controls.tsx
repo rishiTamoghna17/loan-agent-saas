@@ -6,7 +6,7 @@ import { saveFollowUp, updateFollowUpStatus } from "@/app/dashboard/actions";
 import { PendingButton } from "@/components/ui/pending-button";
 import { formatFollowUpDate } from "@/lib/follow-ups";
 
-type FollowUp = { id: string; due_at: string; note: string | null; status: string };
+type FollowUp = { id: string; due_at: string; note: string | null; status: string; completion_source?: string | null };
 
 export function FollowUpControls({
   leadId,
@@ -21,6 +21,9 @@ export function FollowUpControls({
 }) {
   const [editing, setEditing] = useState(false);
   const pending = followUps.find((item) => item.status === "pending");
+  const latestCompleted = followUps
+    .filter((item) => item.status === "completed")
+    .sort((a, b) => (b.due_at ?? "").localeCompare(a.due_at ?? ""))[0];
 
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
@@ -49,9 +52,17 @@ export function FollowUpControls({
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setEditing((value) => !value)} disabled={disabled} className="flex items-center gap-1 text-xs font-semibold text-brand-blue disabled:opacity-50">
-          <CalendarClock className="h-3.5 w-3.5" />Schedule follow-up
-        </button>
+        <div className="space-y-2">
+          {latestCompleted ? (
+            <p className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
+              <Check className="h-3.5 w-3.5" />
+              {latestCompleted.completion_source === "reminder_email" ? "Reminder sent · Completed" : "Completed"}
+            </p>
+          ) : null}
+          <button type="button" onClick={() => setEditing((value) => !value)} disabled={disabled} className="flex items-center gap-1 text-xs font-semibold text-brand-blue disabled:opacity-50">
+            <CalendarClock className="h-3.5 w-3.5" />Schedule follow-up
+          </button>
+        </div>
       )}
 
       {editing ? (

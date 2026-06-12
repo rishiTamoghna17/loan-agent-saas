@@ -7,7 +7,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  if (!process.env.CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const authorization = request.headers.get("authorization");
+  if (!cronSecret) {
+    console.error("Follow-up reminder cron rejected: CRON_SECRET is missing in this deployment.");
+    return NextResponse.json({ error: "Cron authentication is not configured." }, { status: 401 });
+  }
+  if (authorization !== `Bearer ${cronSecret}`) {
+    console.warn("Follow-up reminder cron rejected: authorization header did not match CRON_SECRET.", {
+      userAgent: request.headers.get("user-agent"),
+      hasAuthorizationHeader: Boolean(authorization)
+    });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -93,6 +103,24 @@ export async function GET(request: Request) {
         provider_message_id: message.messageId || null,
         sent_at: new Date().toISOString()
       }).eq("id", delivery.id);
+      const completedAt = new Date().toISOString();
+      const { error: completionError } = await supabase
+        .from("lead_follow_ups")
+        .update({
+          status: "completed",
+          completed_at: completedAt,
+          completion_source: "reminder_email"
+        })
+        .in("id", followUps.map((followUp) => followUp.id))
+        .eq("agent_id", preference.agent_id)
+        .eq("status", "pending");
+      if (completionError) {
+        console.error("Reminder email sent, but follow-up tasks could not be marked completed.", {
+          deliveryId: delivery.id,
+          agentId: preference.agent_id,
+          error: completionError.message
+        });
+      }
       sent++;
     } catch (sendError) {
       await supabase.from("notification_deliveries").update({

@@ -98,7 +98,8 @@ export async function updateFollowUpStatus(formData: FormData) {
   if (isDashboardLocked(agent)) return;
   await supabase.from("lead_follow_ups").update({
     status: parsed.data.status,
-    completed_at: parsed.data.status === "completed" ? new Date().toISOString() : null
+    completed_at: parsed.data.status === "completed" ? new Date().toISOString() : null,
+    completion_source: parsed.data.status === "completed" ? "manual" : null
   }).eq("id", parsed.data.id).eq("agent_id", agent.id);
   revalidatePath("/dashboard");
 }

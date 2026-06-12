@@ -247,6 +247,8 @@ CRON_SECRET=
 
 Vercel sends this value as `Authorization: Bearer CRON_SECRET`. Do not invoke the authorized route in production while testing unless you intend to send real reminder emails.
 
+Set `CRON_SECRET` for the **Production** environment and create a new production deployment after adding or changing it. A `401` from a request with user agent `vercel-cron/1.0` means the deployed function is missing the production secret or the deployed secret does not match the value Vercel used. Successfully emailed overdue tasks are marked completed so the CRM shows the reminder outcome.
+
 You can also configure Supabase Auth SMTP through the Management API:
 
 ```bash
