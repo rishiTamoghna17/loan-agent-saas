@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { updateProspect, updateProspectStatus } from "@/app/admin/actions";
+import { useState, useRef, useEffect } from "react";
+import { updateProspect, updateProspectStatus, sendCampaignEmail } from "@/app/admin/actions";
 import { useRouter } from "next/navigation";
 import { 
   Mail, 
@@ -17,7 +17,9 @@ import {
   Eye,
   MousePointerClick,
   MessageSquare,
-  Send
+  Send,
+  ChevronDown,
+  Loader2
 } from "lucide-react";
 import { FormattedDate } from "./formatted-date";
 
@@ -46,18 +48,43 @@ interface ProspectDetailClientProps {
   prospect: any;
   emailHistory: any[];
   historyFilters?: Record<string, string | undefined>;
+  customTemplates?: any[];
 }
 
 export function ProspectDetailClient({ 
   prospect, 
   emailHistory,
-  historyFilters = {}
+  historyFilters = {},
+  customTemplates = []
 }: ProspectDetailClientProps) {
   const router = useRouter();
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [localProspect, setLocalProspect] = useState<any>(prospect);
   const [isEditing, setIsEditing] = useState(false);
   const [editMessage, setEditMessage] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(
+    customTemplates[0]?.id
+  );
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [sendEmailResult, setSendEmailResult] = useState<{ 
+    success: boolean; 
+    count?: number; 
+    failedCount?: number; 
+    error?: string; 
+    errorKind?: string 
+  } | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -83,6 +110,23 @@ export function ProspectDetailClient({
       setEditMessage(result.error ?? "Could not update prospect.");
     }
   };
+
+  const handleSendEmail = async () => {
+    if (!selectedTemplateId) return;
+    setIsSendingEmail(true);
+    setSendEmailResult(null);
+    try {
+      const result = await sendCampaignEmail([localProspect.id], selectedTemplateId);
+      setSendEmailResult(result);
+      router.refresh();
+    } catch (error) {
+      setSendEmailResult({ success: false, error: "Failed to send email" });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const selectedTemplate = customTemplates.find(t => t.id === selectedTemplateId);
 
   if (!localProspect) {
     return (
@@ -184,6 +228,77 @@ export function ProspectDetailClient({
               </form>
             ) : null}
             {editMessage ? <p className="mt-3 text-xs text-slate-600">{editMessage}</p> : null}
+          </div>
+
+          {/* Send Email Card */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-ink mb-3">Send Email Campaign</h3>
+            {customTemplates.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-sm text-slate-500">No templates available</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Custom Dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all"
+                  >
+                    <span className="text-sm font-medium text-slate-700">
+                      {selectedTemplate?.name || "Select a template"}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {customTemplates.map(template => (
+                        <button
+                          key={template.id}
+                          onClick={() => {
+                            setSelectedTemplateId(template.id);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${
+                            selectedTemplateId === template.id ? 'bg-blue-50 text-brand-blue' : 'text-slate-700'
+                          }`}
+                        >
+                          <div className="text-sm font-medium">{template.name}</div>
+                          {template.subject && (
+                            <div className="text-xs text-slate-500 mt-1 line-clamp-1">{template.subject}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleSendEmail}
+                  disabled={isSendingEmail || !selectedTemplateId}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-blue text-white font-medium rounded-lg hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isSendingEmail ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
+                  ) : (
+                    <><Send className="h-4 w-4" /> Send Email</>
+                  )}
+                </button>
+
+                {sendEmailResult && (
+                  <div className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm ${
+                    sendEmailResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                    {sendEmailResult.success ? (
+                      <><CheckCircle2 className="h-4 w-4" /> Email sent successfully!</>
+                    ) : (
+                      <><AlertCircle className="h-4 w-4" /> {sendEmailResult.error}</>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Status Update Card */}

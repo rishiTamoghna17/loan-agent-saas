@@ -1,9 +1,4 @@
-import { getProspect, getProspectEmailHistory } from "@/app/admin/actions";
-// Create the missing client component first, then import it. For now, we'll define it inline or update the import path.
-// If the component exists in a different location, update the path. For example, if it's in '@/components/prospect-detail-client', use that:
-// import { ProspectDetailClient } from "@/components/prospect-detail-client";
-// Or create the component file at @/components/admin/prospect-detail-client.tsx with the necessary exports.
-// Temporary fix: If the component is meant to be created here's the correct import once the file exists:
+import { getProspect, getProspectEmailHistory, getCampaignTemplates } from "@/app/admin/actions";
 import { ProspectDetailClient } from "@/components/admin/prospect-detail-client";
 
 export default async function ProspectDetailPage({
@@ -13,19 +8,23 @@ export default async function ProspectDetailPage({
   params: { id: string };
   searchParams: Record<string, string | undefined>;
 }) {
-  const prospect = await getProspect(params.id);
-  const emailHistory = await getProspectEmailHistory(params.id, {
-    status: searchParams.status,
-    template: searchParams.template,
-    from: searchParams.from,
-    to: searchParams.to
-  });
+  const [prospect, emailHistory, customTemplates] = await Promise.all([
+    getProspect(params.id),
+    getProspectEmailHistory(params.id, {
+      status: searchParams.status,
+      template: searchParams.template,
+      from: searchParams.from,
+      to: searchParams.to
+    }),
+    getCampaignTemplates()
+  ]);
 
   return (
     <ProspectDetailClient 
       prospect={prospect} 
       emailHistory={emailHistory} 
       historyFilters={searchParams}
+      customTemplates={customTemplates}
     />
   );
 }
