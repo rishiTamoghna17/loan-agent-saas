@@ -4,9 +4,8 @@ import { ProspectsTableManager } from "@/components/admin/prospects-table-manage
 import Link from "next/link";
 import { getProspectFolders, getProspects } from "@/app/admin/actions";
 import { ProspectFolderBrowser } from "@/components/admin/prospect-folder-browser";
-import { 
-  Search 
-} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { AdminProspectFilters } from "@/components/admin/prospect-filters";
 
 const engagementOptions = ["sent", "delivered", "opened", "clicked", "replied", "failed", "any"] as const;
 const sortOptions = ["created_at", "name", "lead_score", "status", "city"] as const;
@@ -58,125 +57,76 @@ export default async function ProspectsPage({
   const to = from + pageSize - 1;
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-8">
-      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Prospects</h1>
-          <p className="text-slate-500">Manage and track your potential customers.</p>
+    <div className="min-h-screen bg-slate-50">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Prospects</h1>
+            <p className="text-slate-500 text-sm">Manage and track your potential customers.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {count !== null && (
+              <div className="mr-4 text-sm font-medium text-slate-500">
+                Total: <span className="text-slate-900">{count}</span>
+              </div>
+            )}
+            <AddProspectForm folderId={folderId} />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {count !== null && (
-            <div className="mr-4 text-sm font-medium text-slate-500">
-              Total: <span className="text-ink">{count}</span>
-            </div>
-          )}
-          <AddProspectForm folderId={folderId} />
-        </div>
-      </div>
-      <div className="mb-6 flex gap-2 border-b border-slate-200">
-        {(["active", "archived", "deleted"] as const).map((item) => (
-          <Link key={item} href={`/admin/prospects?view=${item}${folderId ? `&folder=${folderId}` : ""}`} className={`border-b-2 px-4 py-2 text-sm font-semibold capitalize ${view === item ? "border-brand-blue text-brand-blue" : "border-transparent text-slate-500"}`}>
-            {item}
-          </Link>
-        ))}
-      </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <ProspectFolderBrowser folders={folders} activeFolderId={folderId} />
-          <div className="mt-8">
+        <div className="mb-6 flex gap-1 border-b border-slate-200 overflow-x-auto pb-0.5">
+          {(["active", "archived", "deleted"] as const).map((item) => (
+            <Link
+              key={item}
+              href={`/admin/prospects?view=${item}${folderId ? `&folder=${folderId}` : ""}`}
+              className={`border-b-2 px-3 py-2 text-xs sm:text-sm font-semibold capitalize transition-colors whitespace-nowrap ${view === item ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+            >
+              {item}
+            </Link>
+          ))}
+        </div>
+
+        <div className="space-y-6 lg:grid lg:gap-8 lg:grid-cols-3">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            <ProspectFolderBrowser folders={folders} activeFolderId={folderId} />
             <ProspectImport folderId={folderId} />
+            <AdminProspectFilters
+              statusFilter={statusFilter}
+              engagementFilter={engagementFilter}
+              query={query}
+              pageSize={pageSize}
+              sortBy={sortBy}
+              sortDirection={sortDirection}
+              view={view}
+              folderId={folderId}
+            />
           </div>
-          
-          <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-ink">Filters</h2>
-            <form className="space-y-4">
-              <input type="hidden" name="pageSize" value={pageSize} />
-              <input type="hidden" name="sortBy" value={sortBy} />
-              <input type="hidden" name="sortDirection" value={sortDirection} />
-              <input type="hidden" name="view" value={view} />
-              {folderId ? <input type="hidden" name="folder" value={folderId} /> : null}
-              <div>
-                <label className="text-sm font-medium text-slate-700">Search</label>
-                <div className="relative mt-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    name="q"
-                    defaultValue={query}
-                    placeholder="Name, email, company..."
-                    className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:border-primary focus:outline-none"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-slate-700">Status</label>
-                <select
-                  name="status"
-                  defaultValue={statusFilter}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="opened">Opened</option>
-                  <option value="clicked">Clicked</option>
-                  <option value="replied">Replied</option>
-                  <option value="demo_requested">Demo Requested</option>
-                  <option value="trial_started">Trial Started</option>
-                  <option value="converted">Converted</option>
-                  <option value="lost">Lost</option>
-                </select>
-              </div>
 
-              <div>
-                <label className="text-sm font-medium text-slate-700">Engagement</label>
-                <select
-                  name="engagement"
-                  defaultValue={engagementFilter}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                >
-                  <option value="">All Prospects</option>
-                  <option value="any">Any Engagement</option>
-                  <option value="sent">Email Sent</option>
-                  <option value="delivered">Email Delivered</option>
-                  <option value="opened">Opened Email</option>
-                  <option value="clicked">Clicked Link</option>
-                  <option value="replied">Replied</option>
-                  <option value="failed">Failed or Bounced</option>
-                </select>
+          {/* Prospects Table */}
+          <div className="lg:col-span-2">
+            {activeFolderName ? (
+              <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
+                Showing folder: <span className="font-semibold text-slate-900">{activeFolderName}</span>
               </div>
-
-              <button type="submit" className="btn-primary w-full">
-                Apply Filters
-              </button>
-            </form>
+            ) : null}
+            <ProspectsTableManager
+              prospects={prospects}
+              from={from}
+              to={to}
+              count={count}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              pageSize={pageSize}
+              sortBy={sortBy}
+              sortDirection={sortDirection}
+              showDelete={view === "active"}
+              view={view}
+              folders={folders}
+            />
           </div>
         </div>
-
-        <div className="lg:col-span-2">
-          {activeFolderName ? (
-            <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-              Showing folder: <span className="font-semibold text-ink">{activeFolderName}</span>
-            </div>
-          ) : null}
-          <ProspectsTableManager
-            prospects={prospects}
-            from={from}
-            to={to}
-            count={count}
-            totalPages={totalPages}
-            currentPage={currentPage}
-            pageSize={pageSize}
-            sortBy={sortBy}
-            sortDirection={sortDirection}
-            showDelete={view === "active"}
-            view={view}
-            folders={folders}
-          />
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

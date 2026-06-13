@@ -7,6 +7,7 @@ import * as XLSX from "xlsx";
 import { createManualLead, importLeads } from "@/app/dashboard/actions";
 import { LEAD_SOURCES, LOAN_PRODUCTS } from "@/lib/constants";
 import { PincodeAddressFields } from "@/components/address/pincode-address-fields";
+import { Button } from "@/components/ui/button";
 
 const fields = ["name", "phone", "email", "loan_type", "required_amount", "monthly_income", "city", "district", "state", "pincode", "landmark", "source", "message"] as const;
 type LeadDraft = Record<(typeof fields)[number], string>;
@@ -84,22 +85,28 @@ export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
 
   return <>
     <div className="flex flex-wrap gap-2">
-      <button type="button" className="btn-primary" disabled={disabled} onClick={() => setModal("manual")}><Plus className="h-4 w-4" /> Add lead</button>
-      <button type="button" className="btn-secondary" disabled={disabled} onClick={() => setModal("import")}><Upload className="h-4 w-4" /> Bulk import</button>
+      <Button disabled={disabled} onClick={() => setModal("manual")} className="flex items-center gap-1.5">
+        <Plus className="h-4 w-4" /> Add lead
+      </Button>
+      <Button variant="outline" disabled={disabled} onClick={() => setModal("import")} className="flex items-center gap-1.5">
+        <Upload className="h-4 w-4" /> Bulk import
+      </Button>
     </div>
     {modal ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" onMouseDown={(event) => event.target === event.currentTarget && !busy && setModal(null)}>
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-2xl">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white p-5">
-          <div><p className="text-xs font-bold uppercase text-brand-blue">{modal === "manual" ? "Lead entry" : "Spreadsheet import"}</p><h2 className="mt-1 text-xl font-bold text-ink">{modal === "manual" ? "Add a lead" : "Import leads"}</h2></div>
-          <button type="button" className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-800 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60" disabled={busy} onClick={() => setModal(null)} aria-label="Close"><X className="h-5 w-5" /></button>
+          <div><p className="text-xs font-bold uppercase text-blue-600">{modal === "manual" ? "Lead entry" : "Spreadsheet import"}</p><h2 className="mt-1 text-xl font-bold text-slate-900">{modal === "manual" ? "Add a lead" : "Import leads"}</h2></div>
+          <Button variant="outline" size="icon" disabled={busy} onClick={() => setModal(null)} aria-label="Close">
+            <X className="h-5 w-5" />
+          </Button>
         </header>
-        {modal === "manual" ? <form onSubmit={saveLead} className="p-5"><LeadFields value={lead} onChange={setLead} /><button className="btn-primary mt-5 w-full" disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{busy ? "Adding lead..." : "Add lead"}</button></form> :
+        {modal === "manual" ? <form onSubmit={saveLead} className="p-5"><LeadFields value={lead} onChange={setLead} /><Button className="mt-5 w-full" disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}{busy ? " Adding lead..." : " Add lead"}</Button></form> :
           <div className="space-y-5 p-5">
-            <div className="flex flex-col gap-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-ink">Upload CSV, XLS, or XLSX</p><p className="mt-1 text-sm text-slate-600">Maximum 1,000 rows. Invalid rows are skipped.</p></div><button type="button" className="btn-secondary shrink-0" onClick={() => fileRef.current?.click()}><FileSpreadsheet className="h-4 w-4" /> Choose file</button><input ref={fileRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={(event) => event.target.files?.[0] && void readFile(event.target.files[0])} /></div>
-            <button type="button" className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue" onClick={downloadSample}><Download className="h-4 w-4" /> Download sample Excel file</button>
+            <div className="flex flex-col gap-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-slate-900">Upload CSV, XLS, or XLSX</p><p className="mt-1 text-sm text-slate-600">Maximum 1,000 rows. Invalid rows are skipped.</p></div><Button variant="outline" className="shrink-0" onClick={() => fileRef.current?.click()}><FileSpreadsheet className="h-4 w-4" /> Choose file</Button><input ref={fileRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={(event) => event.target.files?.[0] && void readFile(event.target.files[0])} /></div>
+            <button type="button" className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600" onClick={downloadSample}><Download className="h-4 w-4" /> Download sample Excel file</button>
             {fileName ? <p className="rounded-md bg-slate-50 p-3 text-sm"><strong>{fileName}</strong> · {rows.length} rows ready</p> : null}
             {rows.length ? <div className="overflow-x-auto rounded-lg border border-slate-200"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-3">Name</th><th className="p-3">Phone</th><th className="p-3">Loan</th><th className="p-3">City</th><th className="p-3">Amount</th></tr></thead><tbody>{rows.slice(0, 5).map((row, index) => <tr key={index} className="border-t border-slate-100"><td className="p-3">{row.name}</td><td className="p-3">{row.phone}</td><td className="p-3">{row.loan_type}</td><td className="p-3">{row.city}</td><td className="p-3">{row.required_amount}</td></tr>)}</tbody></table></div> : null}
-            <button type="button" className="btn-primary w-full" disabled={busy || !rows.length} onClick={runImport}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{busy ? "Importing..." : `Import ${rows.length || ""} leads`}</button>
+            <Button className="w-full" disabled={busy || !rows.length} onClick={runImport}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{busy ? " Importing..." : ` Import ${rows.length || ""} leads`}</Button>
           </div>}
       </section>
     </div> : null}

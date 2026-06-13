@@ -135,7 +135,7 @@ export async function getProspectFolders() {
   await ensureAdmin();
   const supabase = await getAdminSupabase();
   const [{ data: folders, error }, { data: prospects }] = await Promise.all([
-    supabase.from("prospect_folders").select("id, name, parent_id, created_at").order("name"),
+    supabase.from("prospect_folders").select("id, name, parent_id, created_at, archived_at").order("name"),
     supabase.from("prospects").select("folder_id").is("archived_at", null).is("deleted_at", null)
   ]);
   if (error) throw new Error(error.message);
@@ -178,6 +178,148 @@ export async function deleteProspectFolder(id: string) {
   if (error) return { success: false, error: error.message };
   revalidatePath("/admin/prospects");
   return { success: true };
+}
+
+export async function archiveProspectFolder(id: string) {
+  await ensureAdmin();
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const user = await requireAdminUser();
+  const supabase = await getAdminSupabase();
+  
+  // Get all subfolder ids recursively
+  const getSubfolderIds = async (parentId: string): Promise<string[]> => {
+    const { data: subfolders } = await supabase
+      .from("prospect_folders")
+      .select("id")
+      .eq("parent_id", parentId);
+    let ids = subfolders?.map(f => f.id) || [];
+    for (const subId of ids) {
+      ids = [...ids, ...(await getSubfolderIds(subId))];
+    }
+    return ids;
+  };
+  
+  const folderIds = [id, ...(await getSubfolderIds(id))];
+  
+  // First archive all the folders
+  const { error: foldersError } = await supabase
+    .from("prospect_folders")
+    .update({ 
+      archived_at: new Date().toISOString()
+    })
+    .in("id", folderIds);
+  
+  if (foldersError) return { success: false, error: foldersError.message };
+  
+  // Then archive all prospects in these folders
+  const { data: oldProspects, error: prospectsError } = await supabase
+    .from("prospects")
+    .select("*")
+    .in("folder_id", folderIds)
+    .is("archived_at", null)
+    .is("deleted_at", null);
+  
+  if (prospectsError) return { success: false, error: prospectsError.message };
+  
+  const { error: updateError } = await supabase
+    .from("prospects")
+    .update({ 
+      archived_at: new Date().toISOString(),
+      archived_by: user.id
+    })
+    .in("folder_id", folderIds)
+    .is("archived_at", null)
+    .is("deleted_at", null);
+  
+  if (updateError) return { success: false, error: updateError.message };
+  
+  // Log audit
+  if (oldProspects?.length) {
+    await supabase.from("audit_logs").insert(
+      oldProspects.map(prospect => ({
+        user_id: user.id,
+        action: "bulk_archive",
+        table_name: "prospects",
+        record_id: prospect.id,
+        old_data: prospect,
+        new_data: { archived_at: new Date().toISOString(), archived_by: user.id }
+      }))
+    );
+  }
+  
+  revalidatePath("/admin/prospects");
+  return { success: true, count: oldProspects?.length || 0 };
+}
+
+export async function restoreProspectFolder(id: string) {
+  await ensureAdmin();
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const user = await requireAdminUser();
+  const supabase = await getAdminSupabase();
+  
+  // Get all subfolder ids recursively
+  const getSubfolderIds = async (parentId: string): Promise<string[]> => {
+    const { data: subfolders } = await supabase
+      .from("prospect_folders")
+      .select("id")
+      .eq("parent_id", parentId);
+    let ids = subfolders?.map(f => f.id) || [];
+    for (const subId of ids) {
+      ids = [...ids, ...(await getSubfolderIds(subId))];
+    }
+    return ids;
+  };
+  
+  const folderIds = [id, ...(await getSubfolderIds(id))];
+  
+  // First restore all the folders
+  const { error: foldersError } = await supabase
+    .from("prospect_folders")
+    .update({ 
+      archived_at: null
+    })
+    .in("id", folderIds);
+  
+  if (foldersError) return { success: false, error: foldersError.message };
+  
+  // Then restore all prospects in these folders
+  const { data: oldProspects, error: prospectsError } = await supabase
+    .from("prospects")
+    .select("*")
+    .in("folder_id", folderIds)
+    .not("archived_at", "is", null)
+    .is("deleted_at", null);
+  
+  if (prospectsError) return { success: false, error: prospectsError.message };
+  
+  const { error: updateError } = await supabase
+    .from("prospects")
+    .update({ 
+      archived_at: null,
+      archived_by: null
+    })
+    .in("folder_id", folderIds)
+    .not("archived_at", "is", null)
+    .is("deleted_at", null);
+  
+  if (updateError) return { success: false, error: updateError.message };
+  
+  // Log audit
+  if (oldProspects?.length) {
+    await supabase.from("audit_logs").insert(
+      oldProspects.map(prospect => ({
+        user_id: user.id,
+        action: "bulk_restore_archive",
+        table_name: "prospects",
+        record_id: prospect.id,
+        old_data: prospect,
+        new_data: { archived_at: null, archived_by: null }
+      }))
+    );
+  }
+  
+  revalidatePath("/admin/prospects");
+  return { success: true, count: oldProspects?.length || 0 };
 }
 
 export async function moveProspectsToFolder(ids: string[], folderId?: string) {

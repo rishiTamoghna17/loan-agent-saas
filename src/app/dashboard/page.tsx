@@ -1,6 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, BellRing, Building2, Download, Folder, Globe2, MapPin, Mail, Phone, UserRound } from "lucide-react";
+import {
+  AlertTriangle,
+  BellRing,
+  Building2,
+  Download,
+  Folder,
+  Globe2,
+  MapPin,
+  Mail,
+  Phone,
+  UserRound,
+  MoreHorizontal,
+  Plus,
+  TrendingUp,
+  Users,
+  FileText,
+  CheckCircle2,
+  XCircle
+} from "lucide-react";
 import { ContactLeadButton } from "@/components/dashboard/contact-lead-button";
 import { AddLeadsMenu } from "@/components/dashboard/add-leads-menu";
 import { LeadActionsPanel } from "@/components/dashboard/lead-actions-panel";
@@ -15,6 +33,10 @@ import { SUPPORT_CONTACT } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { classifyFollowUp, formatFollowUpDate } from "@/lib/follow-ups";
 import { createClient } from "@/lib/supabase/server";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -22,6 +44,26 @@ function getFolderName(folders: Array<{ id: string; name: string }>, folderId?: 
   if (!folderId) return null;
   const folder = folders.find(f => f.id === folderId);
   return folder ? folder.name : null;
+}
+
+function getStatusVariant(status: string) {
+  switch (status) {
+    case "new": return "default";
+    case "contacted": return "primary";
+    case "follow_up": return "warning";
+    case "closed": return "success";
+    case "rejected": return "danger";
+    default: return "default";
+  }
+}
+
+function getFollowUpVariant(group: string) {
+  switch (group) {
+    case "overdue": return "danger";
+    case "today": return "warning";
+    case "upcoming": return "default";
+    default: return "default";
+  }
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
@@ -93,7 +135,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
     if (filterValues.source && lead.source !== filterValues.source) return false;
     if (filterValues.loanType && lead.loan_type !== filterValues.loanType) return false;
     if (filterValues.from && lead.created_at < `${filterValues.from}T00:00:00`) return false;
-    if (filterValues.to && lead.created_at > `${filterValues.to}T23:59:59`) return false;
+    if (filterValues.to && lead.created_at > `${filterValues.from}T23:59:59`) return false;
     if (filterValues.followUp === "none" && pending) return false;
     if (filterValues.followUp && filterValues.followUp !== "none" && (!pending || classifyFollowUp(pending.due_at, timezone, now) !== filterValues.followUp)) return false;
     return true;
@@ -123,233 +165,308 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
   exportParams.delete("pageSize");
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-6">
+    <div className="min-h-screen bg-slate-50">
+      {/* Top Banner */}
       {agent.plan_status === "trial" && !isTrialExpired ? (
-        <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm font-medium text-blue-800">
-          {trialDaysRemaining} days remaining in your free trial.
+        <div className="border-b border-amber-200 bg-amber-50">
+          <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-amber-900">
+              <BellRing className="h-4 w-4" />
+              <span className="font-medium">Trial Expiring Soon</span>
+              <span className="text-amber-800">{trialDaysRemaining} days remaining in your free trial</span>
+            </div>
+          </div>
         </div>
       ) : null}
       {isTrialExpired ? (
-        <div className="mb-5 rounded-lg border border-red-100 bg-red-50 p-5 text-red-800">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div className="flex-1">
-              <p className="font-bold">Your trial has ended.</p>
-              <p className="mt-2 text-sm">You can only view your leads. To continue accessing all features, contact our support team:</p>
-              <div className="mt-3 space-y-1">
-                <a href={`tel:${SUPPORT_CONTACT.phone}`} className="flex items-center gap-2 text-sm hover:underline">
-                  <Phone className="h-4 w-4" />
-                  {SUPPORT_CONTACT.phone}
-                </a>
-                <a href={`mailto:${SUPPORT_CONTACT.email}`} className="flex items-center gap-2 text-sm hover:underline">
-                  <Mail className="h-4 w-4" />
-                  {SUPPORT_CONTACT.email}
-                </a>
-              </div>
+        <div className="border-b border-red-200 bg-red-50">
+          <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-red-900">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="font-medium">Trial Expired</span>
+              <span className="text-red-800">You can only view your leads. Contact support to continue.</span>
+              <a href={`tel:${SUPPORT_CONTACT.phone}`} className="ml-2 font-semibold underline underline-offset-4 text-red-900">
+                Call now
+              </a>
             </div>
           </div>
         </div>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
             {agent.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={agent.logo_url} alt={agent.business_name} className="h-14 w-14 rounded-lg border border-slate-200 object-cover" />
+              <img src={agent.logo_url} alt={agent.business_name} className="h-12 w-12 rounded-2xl border border-slate-200 object-cover shadow-sm" />
             ) : (
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-brand-blue text-xl font-bold text-white">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-xl font-bold text-white shadow-sm">
                 {agent.agent_name.slice(0, 1)}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-brand-blue">Lead dashboard</p>
-              <h1 className="mt-1 text-3xl font-bold text-ink">{agent.business_name}</h1>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+              <p className="text-xs font-semibold text-blue-600">Welcome back</p>
+              <h1 className="mt-0.5 text-xl font-bold text-slate-900 truncate">{agent.business_name}</h1>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                 <span className="inline-flex items-center gap-1.5">
-                  <UserRound className="h-4 w-4 text-slate-400" />
+                  <UserRound className="h-3 w-3" />
                   {agent.agent_name}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-slate-400" />
+                  <MapPin className="h-3 w-3" />
                   {agent.city}, {agent.district}
                 </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Building2 className="h-4 w-4 text-slate-400" />
-                  /agent/{agent.slug}
-                </span>
-                {agent.custom_domain ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Globe2 className="h-4 w-4 text-slate-400" />
-                    {agent.custom_domain} · {agent.domain_status?.replace("_", " ")}
-                  </span>
-                ) : null}
               </div>
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link href="/dashboard/profile" className="btn-secondary">Edit profile</Link>
-            <Link href={`/agent/${agent.slug}`} className="btn-primary">View public page</Link>
+          <div className="flex gap-2 sm:gap-3">
+            <Link href="/dashboard/profile">
+              <Button variant="outline" className="flex items-center gap-1.5">
+                <UserRound className="h-4 w-4" />
+                <span className="hidden sm:inline">Profile</span>
+              </Button>
+            </Link>
+            <Link href={`/agent/${agent.slug}`}>
+              <Button className="flex items-center gap-1.5">
+                <Globe2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Public page</span>
+              </Button>
+            </Link>
           </div>
         </div>
-      </section>
 
-      {activeFollowUps.length ? (
-        <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
-          <div className="flex items-start gap-3">
-            <BellRing className="mt-1 h-5 w-5 shrink-0 text-amber-600" />
-            <div>
-              <h2 className="font-semibold text-amber-950">Follow-up tasks</h2>
-              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+        {/* Stats Grid - 1 col on mobile, 2 on tablet, 5 on desktop */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Total leads</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{counts.total}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Users className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">New leads</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{counts.new}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <Plus className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Follow-ups</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{counts.follow_up}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                  <BellRing className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Closed</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{counts.closed}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="sm:col-span-2 lg:col-span-1">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Conversion</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{analytics.conversion}%</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Follow-ups Section - Stack on mobile, grid on tablet+ */}
+        {activeFollowUps.length ? (
+          <Card className="mt-6">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <BellRing className="h-5 w-5 text-amber-600" />
+                <CardTitle>Follow-up tasks</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-3">
                 {(["overdue", "today", "upcoming"] as const).map((group) => (
-                  <div key={group} className="rounded-md border border-amber-200 bg-white p-3 text-sm">
-                    <p className="font-semibold capitalize text-ink">{group} · {followUpGroups[group].length}</p>
-                    {followUpGroups[group].slice(0, 3).map((task) => {
-                      const lead = Array.isArray(task.leads) ? task.leads[0] : task.leads;
-                      return <p key={task.id} className="mt-2 text-xs text-slate-600">{lead?.name} · {formatFollowUpDate(task.due_at, timezone)}</p>;
-                    })}
+                  <div key={group} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold capitalize text-slate-900">{group}</p>
+                      <Badge variant={getFollowUpVariant(group)}>{followUpGroups[group].length}</Badge>
+                    </div>
+                    <div className="mt-2 space-y-1.5">
+                      {followUpGroups[group].slice(0, 3).map((task) => {
+                        const lead = Array.isArray(task.leads) ? task.leads[0] : task.leads;
+                        return (
+                          <div key={task.id} className="flex items-center gap-2 text-xs text-slate-600">
+                            <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            <span className="font-medium truncate">{lead?.name}</span>
+                            <span className="text-slate-400">·</span>
+                            <span className="whitespace-nowrap">{formatFollowUpDate(task.due_at, timezone)}</span>
+                          </div>
+                        );
+                      })}
+                      {followUpGroups[group].length > 3 ? (
+                        <p className="text-xs text-slate-400">+{followUpGroups[group].length - 3} more</p>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Total leads" value={counts.total} />
-        <Metric label="New leads" value={counts.new} />
-        <Metric label="Follow-up" value={counts.follow_up} />
-        <Metric label="Closed" value={counts.closed} />
-        <Metric label="Rejected" value={counts.rejected} />
-      </section>
-
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Website visits" value={analytics.visits} />
-        <Metric label="Lead submissions" value={analytics.submissions} />
-        <Metric label="WhatsApp clicks" value={analytics.whatsappClicks} />
-        <Metric label="Conversion %" value={analytics.conversion} suffix="%" />
-      </section>
-
-      <section className="card mt-6 overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold text-ink">Leads</h2>
-          <div className="flex flex-wrap gap-2">
-            <AddLeadsMenu disabled={isTrialExpired} />
-            <a href={`/api/leads/export?${exportParams.toString()}`} className="btn-secondary"><Download className="h-4 w-4" /> Export CSV</a>
-          </div>
-        </div>
-        <LeadFilters values={filterValues} />
-        <LeadFolderMoveTable folders={folders} disabled={isTrialExpired} />
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="w-12 px-4 py-3"><span className="sr-only">Select</span></th>
-                <th className="w-[17%] px-4 py-3">Name</th>
-                <th className="w-[12%] px-4 py-3">Phone</th>
-                <th className="w-[12%] px-4 py-3">Loan type</th>
-                <th className="w-[10%] px-4 py-3">Amount</th>
-                <th className="w-[14%] px-4 py-3">City</th>
-                <th className="w-[9%] px-4 py-3">Source</th>
-                <th className="w-[10%] px-4 py-3">Folder</th>
-                <th className="w-[12%] px-4 py-3">Status</th>
-                <th className="w-[9%] px-4 py-3">Created</th>
-                <th className="w-[15%] px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {visibleLeads.map((lead) => (
-                <tr key={lead.id} className="align-top">
-                  <td className="px-4 py-4"><input type="checkbox" name="lead_ids" value={lead.id} form="move-leads-form" aria-label={`Select ${lead.name}`} disabled={isTrialExpired} /></td>
-                  <td className="px-4 py-4">
-                    <p className="font-semibold text-slate-900">{lead.name}</p>
-                    {lead.email ? <p className="text-xs text-slate-500">{lead.email}</p> : null}
-                    {lead.message ? <p className="mt-2 max-w-xs text-xs text-slate-500">{lead.message}</p> : null}
-                  </td>
-                  <td className="px-4 py-4">{lead.phone}</td>
-                  <td className="px-4 py-4">{lead.loan_type}</td>
-                  <td className="px-4 py-4">{formatCurrency(lead.required_amount)}</td>
-                  <td className="px-4 py-4">
-                    <p>{lead.city}</p>
-                    {lead.district || lead.state || lead.pincode ? (
-                      <p className="text-xs text-slate-500">
-                        {[lead.district, lead.state].filter(Boolean).join(", ")}
-                        {lead.pincode ? ` - ${lead.pincode}` : ""}
-                      </p>
-                    ) : null}
-                    {lead.landmark ? <p className="mt-1 text-xs text-slate-500">Landmark: {lead.landmark}</p> : null}
-                  </td>
-                  <td className="px-4 py-4">{lead.source ?? "Website"}</td>
-                  <td className="px-4 py-4">
-                    {lead.folder_id ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
-                        <Folder className="h-3 w-3" />
-                        {getFolderName(folders, lead.folder_id)}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    {isTrialExpired ? <span className="text-sm text-slate-500">Locked</span> : <LeadStatusSelect leadId={lead.id} status={lead.status} />}
-                  </td>
-                  <td className="px-4 py-4">{formatDate(lead.created_at)}</td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-start gap-2">
-                      <ContactLeadButton agentId={agent.id} leadName={lead.name} phone={lead.phone} />
-                      <LeadActionsPanel
-                        leadId={lead.id}
-                        agentId={agent.id}
-                        leadName={lead.name}
-                        timezone={timezone}
-                        notes={lead.lead_notes ?? []}
-                        followUps={lead.lead_follow_ups ?? []}
-                        disabled={isTrialExpired}
-                        lifecycle={lead.deleted_at ? "deleted" : lead.archived_at ? "archived" : "active"}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!visibleLeads.length ? (
-                <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-slate-500">
-                    No leads yet. Share your public page to start receiving enquiries.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-        <LeadPagination page={page} pageSize={pageSize} count={filteredLeadsWithFolder.length} query={filterValues} />
-      </section>
-
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <LeadFolderBrowser folders={folders} activeFolderId={folderId} />
-          <div className="mt-8">
+        {/* Main Content - Sidebar first on mobile, grid on desktop */}
+        <div className="mt-8 space-y-6 lg:grid lg:gap-8 lg:grid-cols-3">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            <LeadFolderBrowser folders={folders} activeFolderId={folderId} />
             <LeadImport folderId={folderId} />
           </div>
-        </div>
 
-        <div className="lg:col-span-2">
-          {folderId ? (
-            <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-              Showing folder: <span className="font-semibold text-ink">{folderId === "unfiled" ? "Unfiled" : folders.find(f => f.id === folderId)?.name}</span>
-            </div>
-          ) : null}
+          {/* Leads Table */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <FileText className="h-5 w-5 text-slate-500" />
+                    Leads
+                  </CardTitle>
+                  {folderId ? (
+                    <CardDescription>
+                      Showing folder: <span className="font-semibold text-slate-700">{folderId === "unfiled" ? "Unfiled" : folders.find(f => f.id === folderId)?.name}</span>
+                    </CardDescription>
+                  ) : <CardDescription>Manage and track your leads</CardDescription>}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <AddLeadsMenu disabled={isTrialExpired} />
+                  <a href={`/api/leads/export?${exportParams.toString()}`}>
+                    <Button variant="outline" className="flex items-center gap-1.5">
+                      <Download className="h-4 w-4" />
+                      <span className="hidden sm:inline">Export</span>
+                    </Button>
+                  </a>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <LeadFilters values={filterValues} />
+                <LeadFolderMoveTable folders={folders} disabled={isTrialExpired} />
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px] text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="w-10 px-4 py-3"><span className="sr-only">Select</span></th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Name</th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Loan type</th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Amount</th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Folder</th>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {visibleLeads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <input type="checkbox" name="lead_ids" value={lead.id} form="move-leads-form" aria-label={`Select ${lead.name}`} disabled={isTrialExpired} className="rounded border-slate-300" />
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-900 text-sm">{lead.name}</p>
+                            {lead.email ? <p className="text-xs text-slate-500 truncate max-w-[150px]">{lead.email}</p> : null}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 text-sm">{lead.phone}</td>
+                          <td className="px-4 py-3 text-slate-600 text-sm">{lead.loan_type}</td>
+                          <td className="px-4 py-3 font-medium text-slate-900 text-sm">{formatCurrency(lead.required_amount)}</td>
+                          <td className="px-4 py-3">
+                            {isTrialExpired ? (
+                              <span className="text-sm text-slate-500">Locked</span>
+                            ) : (
+                              <LeadStatusSelect leadId={lead.id} status={lead.status} />
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {lead.folder_id ? (
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+                                <Folder className="h-3 w-3" />
+                                {getFolderName(folders, lead.folder_id)}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <ContactLeadButton agentId={agent.id} leadName={lead.name} phone={lead.phone} />
+                              <LeadActionsPanel
+                                leadId={lead.id}
+                                agentId={agent.id}
+                                leadName={lead.name}
+                                timezone={timezone}
+                                notes={lead.lead_notes ?? []}
+                                followUps={lead.lead_follow_ups ?? []}
+                                disabled={isTrialExpired}
+                                lifecycle={lead.deleted_at ? "deleted" : lead.archived_at ? "archived" : "active"}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {!visibleLeads.length ? (
+                        <tr>
+                          <td colSpan={8} className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center gap-2">
+                              <Users className="h-10 w-10 text-slate-300" />
+                              <p className="text-sm text-slate-500">No leads yet. Share your public page to start receiving enquiries.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+              <CardFooter className="px-4 py-3 sm:px-6">
+                <LeadPagination page={page} pageSize={pageSize} count={filteredLeadsWithFolder.length} query={filterValues} />
+              </CardFooter>
+            </Card>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold text-ink">{value}{suffix}</p>
+      </main>
     </div>
   );
 }

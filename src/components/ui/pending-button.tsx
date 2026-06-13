@@ -2,21 +2,28 @@
 
 import { Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
+import { Button, ButtonProps } from "./button";
 
-type PendingButtonProps = {
-  children: React.ReactNode;
+type PendingButtonProps = ButtonProps & {
   pendingText?: string;
-  className?: string;
-  disabled?: boolean;
 };
 
-export function PendingButton({ children, pendingText = "Saving...", className = "btn-primary", disabled = false }: PendingButtonProps) {
+export function PendingButton({
+  children,
+  pendingText = "Saving...",
+  disabled = false,
+  ...props
+}: PendingButtonProps) {
   const { pending } = useFormStatus();
 
   return (
-    <button type="submit" className={className} disabled={pending || disabled}>
+    <Button
+      type="submit"
+      disabled={pending || disabled}
+      {...props}
+    >
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
       {pending ? pendingText : children}
-    </button>
+    </Button>
   );
 }

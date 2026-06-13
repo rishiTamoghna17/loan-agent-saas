@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { Archive, Download, FolderInput, RotateCcw, Trash2 } from "lucide-react";
 import { bulkProspectAction, moveProspectsToFolder } from "@/app/admin/actions";
 import { ReusableProspectTable } from "./reusable-prospect-table";
+import { Button } from "@/components/ui/button";
+import { Select, SelectItem } from "@/components/ui/select";
 import type { ProspectFolder } from "./prospect-folder-browser";
 
 export function ProspectsTableManager(props: React.ComponentProps<typeof ReusableProspectTable> & { view: "active" | "archived" | "deleted"; folders: ProspectFolder[] }) {
@@ -56,26 +58,39 @@ export function ProspectsTableManager(props: React.ComponentProps<typeof Reusabl
           <span className="mr-2 text-sm font-semibold text-slate-700">{selectedIds.length} selected</span>
           {props.view === "active" ? (
             <>
-              <select value={status} onChange={(event) => setStatus(event.target.value)} className="field w-auto" disabled={pending}>
+              <Select
+                value={status}
+                onValueChange={setStatus}
+                placeholder="Select status"
+                disabled={pending}
+                className="w-auto"
+              >
                 {["new", "contacted", "opened", "clicked", "replied", "demo_requested", "trial_started", "converted", "lost"].map((item) => (
-                  <option key={item} value={item}>{item.replace("_", " ")}</option>
+                  <SelectItem key={item} value={item}>{item.replace("_", " ")}</SelectItem>
                 ))}
-              </select>
-              <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={() => run("status")}>Change status</button>
-              <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={() => run("archive")}><Archive className="h-4 w-4" />Archive</button>
-              <button className="btn-secondary text-red-600" disabled={pending || !selectedIds.length} onClick={() => run("delete")}><Trash2 className="h-4 w-4" />Delete</button>
-              <select aria-label="Destination folder" value={folderId} onChange={(event) => setFolderId(event.target.value)} className="field w-auto" disabled={pending}>
-                <option value="">Top level</option>
-                {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-              </select>
-              <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={moveSelected}><FolderInput className="h-4 w-4" />Move</button>
+              </Select>
+              <Button variant="outline" disabled={pending || !selectedIds.length} onClick={() => run("status")}>Change status</Button>
+              <Button variant="outline" disabled={pending || !selectedIds.length} onClick={() => run("archive")}><Archive className="h-4 w-4" />Archive</Button>
+              <Button variant="outline" className="text-red-600" disabled={pending || !selectedIds.length} onClick={() => run("delete")}><Trash2 className="h-4 w-4" />Delete</Button>
+              <Select
+                aria-label="Destination folder"
+                value={folderId}
+                onValueChange={setFolderId}
+                placeholder="Top level"
+                disabled={pending}
+                className="w-auto"
+              >
+                <SelectItem value="">Top level</SelectItem>
+                {props.folders.map((folder) => <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>)}
+              </Select>
+              <Button variant="outline" disabled={pending || !selectedIds.length} onClick={moveSelected}><FolderInput className="h-4 w-4" />Move</Button>
             </>
           ) : (
-            <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={() => run(props.view === "archived" ? "restore_archive" : "restore_delete")}>
+            <Button variant="outline" disabled={pending || !selectedIds.length} onClick={() => run(props.view === "archived" ? "restore_archive" : "restore_delete")}>
               <RotateCcw className="h-4 w-4" />Restore
-            </button>
+            </Button>
           )}
-          <button className="btn-secondary" disabled={pending || !selectedIds.length} onClick={exportSelected}><Download className="h-4 w-4" />Export selected</button>
+          <Button variant="outline" disabled={pending || !selectedIds.length} onClick={exportSelected}><Download className="h-4 w-4" />Export selected</Button>
         </div>
         {message ? <p className="mt-2 text-sm text-slate-600">{message}</p> : null}
       </div>

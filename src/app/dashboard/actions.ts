@@ -357,7 +357,7 @@ export async function importLeadsWithFolder(leads: any[], folderId?: string, fol
 export async function getLeadFolders() {
   const { supabase, agent } = await requireAgent();
   const [{ data: folders, error }, { data: leads }] = await Promise.all([
-    supabase.from("lead_folders").select("id, name, parent_id, created_at").eq("agent_id", agent.id).order("name"),
+    supabase.from("lead_folders").select("id, name, parent_id, created_at, archived_at").eq("agent_id", agent.id).order("name"),
     supabase.from("leads").select("folder_id").eq("agent_id", agent.id).eq("status", "new")
   ]);
   if (error) throw new Error(error.message);
@@ -397,6 +397,160 @@ export async function deleteLeadFolder(id: string) {
   if (error) return { success: false, error: error.message };
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+export async function archiveLeadFolder(id: string) {
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+  
+  // Get all subfolder ids recursively
+  const getSubfolderIds = async (parentId: string): Promise<string[]> => {
+    const { data: subfolders } = await supabase
+      .from("lead_folders")
+      .select("id")
+      .eq("agent_id", agent.id)
+      .eq("parent_id", parentId);
+    let ids = subfolders?.map(f => f.id) || [];
+    for (const subId of ids) {
+      ids = [...ids, ...(await getSubfolderIds(subId))];
+    }
+    return ids;
+  };
+  
+  const folderIds = [id, ...(await getSubfolderIds(id))];
+  
+  // First archive all the folders
+  const { error: foldersError } = await supabase
+    .from("lead_folders")
+    .update({ 
+      archived_at: new Date().toISOString()
+    })
+    .eq("agent_id", agent.id)
+    .in("id", folderIds);
+  
+  if (foldersError) return { success: false, error: foldersError.message };
+  
+  // Then archive all leads in these folders
+  const { data: oldLeads, error: leadsError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("agent_id", agent.id)
+    .in("folder_id", folderIds)
+    .is("archived_at", null)
+    .is("deleted_at", null);
+  
+  if (leadsError) return { success: false, error: leadsError.message };
+  
+  const { error: updateError } = await supabase
+    .from("leads")
+    .update({ 
+      archived_at: new Date().toISOString()
+    })
+    .eq("agent_id", agent.id)
+    .in("folder_id", folderIds)
+    .is("archived_at", null)
+    .is("deleted_at", null);
+  
+  if (updateError) return { success: false, error: updateError.message };
+  
+  // Log audit (if lead_audit_logs exists)
+  try {
+    if (oldLeads?.length) {
+      await supabase.from("lead_audit_logs").insert(
+        oldLeads.map(lead => ({
+          agent_id: agent.id,
+          action: "bulk_archive",
+          table_name: "leads",
+          record_id: lead.id,
+          old_data: lead,
+          new_data: { archived_at: new Date().toISOString() }
+        }))
+      );
+    }
+  } catch (e) {
+    // Ignore if audit table doesn't exist
+  }
+  
+  revalidatePath("/dashboard");
+  return { success: true, count: oldLeads?.length || 0 };
+}
+
+export async function restoreLeadFolder(id: string) {
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid folder." };
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+  
+  // Get all subfolder ids recursively
+  const getSubfolderIds = async (parentId: string): Promise<string[]> => {
+    const { data: subfolders } = await supabase
+      .from("lead_folders")
+      .select("id")
+      .eq("agent_id", agent.id)
+      .eq("parent_id", parentId);
+    let ids = subfolders?.map(f => f.id) || [];
+    for (const subId of ids) {
+      ids = [...ids, ...(await getSubfolderIds(subId))];
+    }
+    return ids;
+  };
+  
+  const folderIds = [id, ...(await getSubfolderIds(id))];
+  
+  // First restore all the folders
+  const { error: foldersError } = await supabase
+    .from("lead_folders")
+    .update({ 
+      archived_at: null
+    })
+    .eq("agent_id", agent.id)
+    .in("id", folderIds);
+  
+  if (foldersError) return { success: false, error: foldersError.message };
+  
+  // Then restore all leads in these folders
+  const { data: oldLeads, error: leadsError } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("agent_id", agent.id)
+    .in("folder_id", folderIds)
+    .not("archived_at", "is", null)
+    .is("deleted_at", null);
+  
+  if (leadsError) return { success: false, error: leadsError.message };
+  
+  const { error: updateError } = await supabase
+    .from("leads")
+    .update({ 
+      archived_at: null
+    })
+    .eq("agent_id", agent.id)
+    .in("folder_id", folderIds)
+    .not("archived_at", "is", null)
+    .is("deleted_at", null);
+  
+  if (updateError) return { success: false, error: updateError.message };
+  
+  // Log audit
+  try {
+    if (oldLeads?.length) {
+      await supabase.from("lead_audit_logs").insert(
+        oldLeads.map(lead => ({
+          agent_id: agent.id,
+          action: "bulk_restore_archive",
+          table_name: "leads",
+          record_id: lead.id,
+          old_data: lead,
+          new_data: { archived_at: null }
+        }))
+      );
+    }
+  } catch (e) {
+    // Ignore if audit table doesn't exist
+  }
+  
+  revalidatePath("/dashboard");
+  return { success: true, count: oldLeads?.length || 0 };
 }
 
 export async function moveLeadsToFolder(ids: string[], folderId?: string) {

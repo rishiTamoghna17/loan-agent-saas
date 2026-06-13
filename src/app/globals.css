@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import React Day Picker official styles */
+@import "react-day-picker/dist/style.css";
+
 :root {
   color-scheme: light;
 }
@@ -49,4 +52,16 @@ textarea {
 
 .card {
   @apply rounded-lg border border-slate-200 bg-white shadow-soft;
+}
+
+/* Custom React Day Picker Overrides */
+.rdp {
+  --rdp-cell-size: 38px;
+  --rdp-accent-color: #2563eb;
+  --rdp-accent-color-light: #dbeafe;
+  --rdp-background-color: #f1f5f9;
+  --rdp-outline: 2px solid var(--rdp-accent-color);
+  --rdp-outline-selected: 2px solid var(--rdp-accent-color);
+  margin: 0;
+  padding: 1rem;
 }
