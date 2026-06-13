@@ -3,6 +3,8 @@ node_modules
 .env
 .env.local
 .env*.local
+.env.ollama
+.env.openrouter
 dist
 coverage
 playwright-report
@@ -10,3 +12,6 @@ test-results
 *.tsbuildinfo
 .DS_Store
 .vercel
+.claude/config.json
+.claude/env.sh
+.mcp.json
