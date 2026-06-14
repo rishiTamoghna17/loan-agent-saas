@@ -61,10 +61,10 @@ export default async function CampaignsPage() {
         folderId={undefined}
       />
 
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0 w-full">
         <DesktopTopBar title="Campaigns" agentSlug={agent.slug} />
 
-        <div className="flex-1 overflow-auto p-4 sm:p-8">
+        <div className="flex-1 overflow-auto min-w-0 w-full p-4 sm:p-8">
           <CampaignsDashboardClient
             agent={agent}
             leads={leads}
