@@ -19,7 +19,8 @@ import {
   Trash2,
   Archive,
   RotateCcw,
-  Loader2
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import { LeadHubMark } from "@/components/brand/lead-hub-mark";
 import { Button } from "@/components/ui/button";
@@ -246,6 +247,7 @@ export function MobileNavigationDrawer({ isOpen = false, setIsOpen = () => {}, m
 
   const navItems = [
     { href: "/dashboard", label: "Overview", icon: Home },
+    { href: "/dashboard/agent", label: "Agent Desk", icon: Sparkles },
     { href: "/dashboard/follow-ups", label: "Follow-ups", icon: CalendarCheck }
   ];
 

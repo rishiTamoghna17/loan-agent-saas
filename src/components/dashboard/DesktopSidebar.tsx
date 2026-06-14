@@ -20,13 +20,14 @@ import {
   Archive,
   RotateCcw,
   Mail,
-  Loader2
+  Loader2,
+  Sparkles
 } from "lucide-react";
 import { LeadHubMark } from "@/components/brand/lead-hub-mark";
 import { logout } from "@/app/auth/actions";
 import { PendingButton } from "@/components/ui/pending-button";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import { getFolderName } from "@/lib/utils";
 import { AddLeadsMenu } from "@/components/dashboard/add-leads-menu";
 import { 
@@ -58,6 +59,20 @@ export function DesktopSidebar({
   const [pending, startTransition] = useTransition();
   
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   
   // Folder Modals states
   const [modalType, setModalType] = useState<"create" | "rename" | "delete" | "archive" | "restore" | null>(null);
@@ -91,6 +106,7 @@ export function DesktopSidebar({
   
   const navItems = [
     { label: "Overview", href: "/dashboard", icon: Home },
+    { label: "Agent Desk", href: "/dashboard/agent", icon: Sparkles },
     { label: "Follow-ups", href: "/dashboard/follow-ups", icon: CalendarCheck },
     { label: "Import data", href: "/dashboard/leads?import=true", icon: UploadCloud },
   ];
@@ -531,36 +547,51 @@ export function DesktopSidebar({
               {agent.business_name || agent.name}
             </p>
           </div>
-          <div className="relative group">
-            <button className="text-slate-500 hover:text-slate-700">
+          <div className="relative" ref={profileDropdownRef}>
+            <button 
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              className="text-slate-500 hover:text-slate-700"
+              aria-expanded={isProfileDropdownOpen}
+              aria-haspopup="true"
+            >
               <div className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-slate-50">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </button>
-            <div className="absolute bottom-full right-0 mb-2 hidden w-48 rounded-lg border border-slate-200 bg-white shadow-lg group-hover:block">
-              <div className="py-1">
-                <Link href="/dashboard/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                  <UserRound className="h-4 w-4" />
-                  Profile
-                </Link>
-                <Link href="/dashboard/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
-                <div className="border-t border-slate-100 my-1"></div>
-                <form action={logout} className="w-full">
-                  <PendingButton 
-                    pendingText="Logging out..."
-                    className="w-full justify-start bg-transparent hover:bg-slate-50 text-slate-700 border-0 p-2 h-auto shadow-none"
+            {isProfileDropdownOpen && (
+              <div className="absolute bottom-full right-0 mb-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50">
+                <div className="py-1">
+                  <Link 
+                    href="/dashboard/profile" 
+                    onClick={() => setIsProfileDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
-                  </PendingButton>
-                </form>
+                    <UserRound className="h-4 w-4" />
+                    Profile
+                  </Link>
+                  <Link 
+                    href="/dashboard/profile" 
+                    onClick={() => setIsProfileDropdownOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+                  <div className="border-t border-slate-100 my-1"></div>
+                  <form action={logout} className="w-full">
+                    <PendingButton 
+                      pendingText="Logging out..."
+                      className="w-full justify-start bg-transparent hover:bg-slate-50 text-slate-700 border-0 p-2 h-auto shadow-none"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </PendingButton>
+                  </form>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

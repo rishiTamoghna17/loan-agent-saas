@@ -75,7 +75,7 @@ export function LeadActionsPanel({
           role="dialog"
           aria-modal="true"
           aria-label={`Manage ${leadName}`}
-          className="fixed inset-0 z-45 flex items-center justify-center bg-slate-955/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeDialog();
           }}
