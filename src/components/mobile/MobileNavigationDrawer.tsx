@@ -34,15 +34,20 @@ import {
   archiveLeadFolder, 
   restoreLeadFolder 
 } from "@/app/dashboard/actions";
-import { AddLeadsMenu } from "@/components/dashboard/add-leads-menu";
 
 type MobileNavigationDrawerProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   menuButtonRef: React.RefObject<HTMLButtonElement>;
+  openImportModal?: () => void;
 };
 
-export function MobileNavigationDrawer({ isOpen = false, setIsOpen = () => {}, menuButtonRef }: MobileNavigationDrawerProps) {
+export function MobileNavigationDrawer({ 
+  isOpen = false, 
+  setIsOpen = () => {}, 
+  menuButtonRef,
+  openImportModal
+}: MobileNavigationDrawerProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -52,7 +57,6 @@ export function MobileNavigationDrawer({ isOpen = false, setIsOpen = () => {}, m
 
   const [pending, startTransition] = useTransition();
   const [folders, setFolders] = useState<any[]>([]);
-  const [isImportOpen, setIsImportOpen] = useState(false);
   const folderId = searchParams.get("folder") || undefined;
 
   // Folder Modals states
@@ -318,7 +322,7 @@ export function MobileNavigationDrawer({ isOpen = false, setIsOpen = () => {}, m
             <button
               onClick={() => {
                 setIsOpen(false);
-                setIsImportOpen(true);
+                openImportModal?.();
               }}
               className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors text-left"
             >
@@ -678,14 +682,6 @@ export function MobileNavigationDrawer({ isOpen = false, setIsOpen = () => {}, m
           </div>
         </div>
       )}
-
-      {/* Bulk Import Modal */}
-      <AddLeadsMenu
-        disabled={false}
-        openModal={isImportOpen ? "import" : null}
-        onModalChange={(m) => setIsImportOpen(m === "import")}
-        hideTrigger={true}
-      />
     </div>
   );
 }
