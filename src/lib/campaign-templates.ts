@@ -8,6 +8,13 @@ export type CampaignTemplate = {
   pdf_url?: string;
   pdf_urls?: string[];
   show_header?: boolean;
+  header_content?: string | null;
+  header_bg_color?: string | null;
+  header_text_color?: string | null;
+  footer_content?: string | null;
+  footer_bg_color?: string | null;
+  footer_text_color?: string | null;
+  channel?: 'email' | 'whatsapp' | null;
 };
 
 export type CampaignRenderContext = {
@@ -96,15 +103,44 @@ export function renderCampaignString(input: string | undefined | null, context: 
   return safeInput.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key: string) => values[key] || "");
 }
 
-export function renderCampaignTemplate(template: Pick<CampaignTemplate, "subject" | "content" | "show_header">, context: CampaignRenderContext) {
+export function renderCampaignTemplate(
+  template: Pick<
+    CampaignTemplate, 
+    "subject" | "content" | "show_header" | 
+    "header_content" | "header_bg_color" | "header_text_color" | 
+    "footer_content" | "footer_bg_color" | "footer_text_color"
+  >, 
+  context: CampaignRenderContext
+) {
   const renderedSubject = renderCampaignString(template.subject, context);
   const renderedBody = renderCampaignString(template.content, context);
   const hasHtml = /<\/?[a-z][\s\S]*>/i.test(renderedBody);
+  const headerContent = renderCampaignString(template.header_content || "LeadHub", context);
+  const footerContent = renderCampaignString(template.footer_content || "", context);
 
   return {
     subject: renderedSubject,
-    htmlContent: wrapLeadHubEmail(hasHtml ? renderedBody : textToHtml(renderedBody), template.show_header ?? true),
+    htmlContent: wrapLeadHubEmail(
+      hasHtml ? renderedBody : textToHtml(renderedBody),
+      template.show_header ?? true,
+      headerContent,
+      template.header_bg_color || "#0f63ff",
+      template.header_text_color || "#ffffff",
+      footerContent,
+      template.footer_bg_color || "#f8fafc",
+      template.footer_text_color || "#64748b"
+    ),
     previewText: stripHtml(renderedBody)
+  };
+}
+
+export function renderWhatsAppCampaignTemplate(
+  template: Pick<CampaignTemplate, "content">,
+  context: CampaignRenderContext
+) {
+  const renderedBody = renderCampaignString(template.content, context);
+  return {
+    content: stripHtml(renderedBody)
   };
 }
 
@@ -141,27 +177,45 @@ function escapeHtml(value: string | undefined | null) {
     .replace(/'/g, "&#039;");
 }
 
-function wrapLeadHubEmail(content: string, showHeader: boolean = true) {
+function wrapLeadHubEmail(
+  content: string,
+  showHeader: boolean = true,
+  headerContent: string = "LeadHub",
+  headerBg: string = "#0f63ff",
+  headerText: string = "#ffffff",
+  footerContent?: string,
+  footerBg: string = "#f8fafc",
+  footerText: string = "#64748b"
+) {
   return `
     <div style="margin:0;padding:0;background:#f4f8fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
       <div style="max-width:640px;margin:0 auto;padding:28px 18px;">
         <div style="background:#ffffff;border:1px solid #dbe6f0;border-radius:16px;overflow:hidden;">
           ${showHeader ? `
-            <div style="padding:24px 26px;background:#0f63ff;color:#ffffff;">
-              <div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;">LeadHub</div>
-              <div style="margin-top:4px;font-size:13px;opacity:0.9;">Loan Website • Lead CRM • Follow-up Tracking</div>
+            <div style="padding:24px 26px;background:${headerBg};color:${headerText};">
+              <div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;">${headerContent}</div>
+              ${headerContent === "LeadHub" ? `<div style="margin-top:4px;font-size:13px;opacity:0.9;">Loan Website • Lead CRM • Follow-up Tracking</div>` : ""}
             </div>
           ` : ''}
           <div style="padding:26px;font-size:15px;line-height:1.7;color:#334155;">
             ${content}
+            ${!footerContent ? `
             <div style="margin-top:24px;padding:16px;border-radius:12px;background:#ecfdf5;border:1px solid #bbf7d0;color:#14532d;">
               <strong>LeadHub helps loan agents look professional online and manage every enquiry from one dashboard.</strong>
             </div>
+            ` : ""}
           </div>
+          ${footerContent ? `
+            <div style="padding:16px 26px;background:${footerBg};border-top:1px solid #e2e8f0;color:${footerText};font-size:12px;text-align:center;">
+              ${footerContent}
+            </div>
+          ` : ""}
         </div>
+        ${!footerContent ? `
         <p style="margin:14px 0 0;text-align:center;font-size:12px;color:#64748b;">
           Sent by LeadHub. You received this because your business contact is publicly available or you previously connected with us.
         </p>
+        ` : ""}
       </div>
     </div>
   `;

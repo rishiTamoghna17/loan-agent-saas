@@ -4,13 +4,12 @@ import { classifyFollowUp } from "@/lib/follow-ups";
 import { createClient } from "@/lib/supabase/server";
 import { DesktopSidebar } from "@/components/dashboard/DesktopSidebar";
 import { DesktopTopBar } from "@/components/dashboard/DesktopTopBar";
-import { OverviewContent } from "@/components/dashboard/OverviewContent";
 import { LeadsWorkspace } from "@/components/dashboard/LeadsWorkspace";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function DashboardPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+export default async function LeadsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const supabase = createClient();
   const {
     data: { user }
@@ -98,8 +97,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
     if (filterValues.sort === "follow_up_asc") return aFollowUp.localeCompare(bFollowUp);
     return b.created_at.localeCompare(a.created_at);
   });
-
-  // Apply folder filter
   const filteredLeadsWithFolder = filteredLeads.filter((lead) => {
     if (folderId === "unfiled") return !lead.folder_id;
     else if (folderId && uuidRegex.test(folderId)) return lead.folder_id === folderId;
@@ -123,18 +120,25 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
       />
       
       <div className="flex flex-1 flex-col">
-        <DesktopTopBar title="Overview" agentSlug={agent.slug} />
+        <DesktopTopBar title="Leads" agentSlug={agent.slug} />
         
         {/* Desktop main content */}
-        <div className="hidden lg:block flex-1 overflow-auto">
-          <OverviewContent 
-            agent={agent} 
-            counts={counts} 
-            analytics={analytics} 
-            activeFollowUps={activeFollowUps} 
-            followUpGroups={followUpGroups} 
-            visibleLeads={visibleLeads}
+        <div className="hidden lg:block flex-1 overflow-hidden">
+          <LeadsWorkspace 
+            agent={agent}
+            trialDaysRemaining={trialDaysRemaining}
             isTrialExpired={isTrialExpired}
+            folders={folders}
+            folderId={folderId}
+            filteredLeads={filteredLeadsWithFolder}
+            visibleLeads={visibleLeads}
+            page={page}
+            pageSize={pageSize}
+            query={filterValues}
+            exportParams={exportParams}
+            timezone={timezone}
+            emailCampaigns={emailCampaigns}
+            whatsappCampaigns={whatsappCampaigns}
           />
         </div>
         
@@ -157,7 +161,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
             query={filterValues}
             exportParams={exportParams}
             timezone={timezone}
-            mode="overview"
+            mode="leads"
             emailCampaigns={emailCampaigns}
             whatsappCampaigns={whatsappCampaigns}
           />

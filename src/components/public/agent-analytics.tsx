@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { trackWhatsAppCampaignClick } from "@/app/dashboard/actions";
 
 export function AgentVisitTracker({ agentId, slug }: { agentId: string; slug: string }) {
   const tracked = useRef(false);
@@ -9,6 +10,16 @@ export function AgentVisitTracker({ agentId, slug }: { agentId: string; slug: st
     if (tracked.current) return;
     tracked.current = true;
     void trackAgentEvent(agentId, "website_visit", { slug });
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const wacid = params.get("wacid");
+      if (wacid) {
+        trackWhatsAppCampaignClick(wacid).catch((err) =>
+          console.error("Error tracking WhatsApp click:", err)
+        );
+      }
+    }
   }, [agentId, slug]);
 
   return null;

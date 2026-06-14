@@ -1,16 +1,12 @@
 import { redirect } from "next/navigation";
-import { getLeadFolders } from "@/app/dashboard/actions";
-import { classifyFollowUp } from "@/lib/follow-ups";
 import { createClient } from "@/lib/supabase/server";
 import { DesktopSidebar } from "@/components/dashboard/DesktopSidebar";
 import { DesktopTopBar } from "@/components/dashboard/DesktopTopBar";
-import { OverviewContent } from "@/components/dashboard/OverviewContent";
-import { LeadsWorkspace } from "@/components/dashboard/LeadsWorkspace";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
+import { classifyFollowUp } from "@/lib/follow-ups";
+import { getLeadFolders } from "@/app/dashboard/actions";
 
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export default async function DashboardPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+export default async function FollowUpsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const supabase = createClient();
   const {
     data: { user }
@@ -23,6 +19,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
 
   const filterValues = Object.fromEntries(Object.entries(searchParams).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? "" : value ?? ""])) as Record<string, string>;
   const folderId = typeof filterValues.folder === "string" ? filterValues.folder : undefined;
+
   const [leadResult, eventResult, followUpResult, preferenceResult, folders, campaignResult, whatsappCampaignResult] = await Promise.all([
     supabase
       .from("leads")
@@ -98,8 +95,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
     if (filterValues.sort === "follow_up_asc") return aFollowUp.localeCompare(bFollowUp);
     return b.created_at.localeCompare(a.created_at);
   });
-
-  // Apply folder filter
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const filteredLeadsWithFolder = filteredLeads.filter((lead) => {
     if (folderId === "unfiled") return !lead.folder_id;
     else if (folderId && uuidRegex.test(folderId)) return lead.folder_id === folderId;
@@ -123,22 +119,63 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
       />
       
       <div className="flex flex-1 flex-col">
-        <DesktopTopBar title="Overview" agentSlug={agent.slug} />
+        <DesktopTopBar title="Follow-ups" agentSlug={agent.slug} />
         
         {/* Desktop main content */}
-        <div className="hidden lg:block flex-1 overflow-auto">
-          <OverviewContent 
-            agent={agent} 
-            counts={counts} 
-            analytics={analytics} 
-            activeFollowUps={activeFollowUps} 
-            followUpGroups={followUpGroups} 
-            visibleLeads={visibleLeads}
-            isTrialExpired={isTrialExpired}
-          />
+        <div className="hidden lg:block flex-1 overflow-auto p-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold text-slate-900 mb-2">Follow-ups</h1>
+              <p className="text-slate-600">Manage reminders and upcoming lead activities</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-red-50 border border-red-100 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-red-800">Overdue</span>
+                </div>
+                <div className="mt-2">
+                  <p className="text-3xl font-bold text-red-900">{followUpGroups.overdue.length}</p>
+                </div>
+              </div>
+              
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-amber-800">Due today</span>
+                </div>
+                <div className="mt-2">
+                  <p className="text-3xl font-bold text-amber-900">{followUpGroups.today.length}</p>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-blue-800">Upcoming</span>
+                </div>
+                <div className="mt-2">
+                  <p className="text-3xl font-bold text-blue-900">{followUpGroups.upcoming.length}</p>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 border border-green-100 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-green-800">Completed</span>
+                </div>
+                <div className="mt-2">
+                  <p className="text-3xl font-bold text-green-900">{(followUpResult.data ?? []).filter((item) => item.status === "completed").length}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+              <div className="p-6 border-b border-slate-200">
+                <p className="text-slate-500">Follow-ups workspace coming soon</p>
+              </div>
+            </div>
+          </div>
         </div>
         
-        {/* Mobile/Tablet existing interface */}
+        {/* Mobile/Tablet existing interface (reuse DashboardContent) */}
         <div className="lg:hidden">
           <DashboardContent
             agent={agent}
@@ -157,7 +194,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Re
             query={filterValues}
             exportParams={exportParams}
             timezone={timezone}
-            mode="overview"
+            mode="follow-ups"
             emailCampaigns={emailCampaigns}
             whatsappCampaigns={whatsappCampaigns}
           />

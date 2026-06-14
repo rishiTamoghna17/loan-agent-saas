@@ -13,6 +13,7 @@ export type LeadFolder = {
   name: string;
   parent_id: string | null;
   lead_count: number;
+  archived_at?: string | null;
 };
 
 function buildTree(folders: LeadFolder[], parentId: string | null, depth = 0): Array<LeadFolder & { depth: number }> {

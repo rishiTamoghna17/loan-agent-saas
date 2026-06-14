@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Papa from "papaparse";
 import { FileSpreadsheet, Upload } from "lucide-react";
-import { importLeads } from "@/app/dashboard/actions";
+import { importLeadsWithFolder } from "@/app/dashboard/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function LeadImport({ folderId }: { folderId?: string }) {
@@ -19,10 +19,7 @@ export function LeadImport({ folderId }: { folderId?: string }) {
       header: true,
       skipEmptyLines: true,
       async complete(results) {
-        const formData = new FormData();
-        formData.set("leads", JSON.stringify(results.data));
-        if (folderId) formData.set("folder_id", folderId);
-        const result = await importLeads(null, formData);
+        const result = await importLeadsWithFolder(results.data, folderId);
         setMessage(result.success ? `Imported ${result.count} leads.` : result.error ?? "Import failed.");
         setPending(false);
       }

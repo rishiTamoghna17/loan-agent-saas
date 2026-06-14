@@ -2,6 +2,7 @@ import "server-only";
 
 import { maskProviderError } from "@/lib/campaign-tracking";
 
+const BREVO_API_URL = "https://api.brevo.com/v3";
 const BREVO_ACCOUNT_URL = "https://api.brevo.com/v3/account";
 
 export type BrevoErrorKind =
@@ -120,4 +121,126 @@ export async function getBrevoApiHealth(): Promise<BrevoHealth> {
       providerError: maskProviderError(error instanceof Error ? { message: error.message } : error)
     };
   }
+}
+
+function getApiKey() {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error("Missing BREVO_API_KEY in environment variables.");
+  }
+  return apiKey;
+}
+
+export type BrevoEmailPayload = {
+  sender: { name: string; email: string };
+  to: Array<{ email: string; name?: string }>;
+  subject: string;
+  htmlContent: string;
+  attachment?: Array<{ url: string; name: string } | { content: string; name: string }>;
+  tags?: string[];
+  headers?: Record<string, string>;
+};
+
+export type BrevoWhatsAppPayload = {
+  senderNumber: string;
+  contactNumbers: string[];
+  text: string;
+};
+
+export type BrevoWhatsAppCampaignPayload = {
+  campaignName: string;
+  sender: string;
+  content: string;
+  recipients: { listIds?: number[]; contactNumbers?: string[] };
+  scheduledAt: string;
+};
+
+/**
+ * Sends a transactional SMTP email using Brevo.
+ */
+export async function sendBrevoEmail(payload: BrevoEmailPayload) {
+  const apiKey = getApiKey();
+  
+  const response = await fetch(`${BREVO_API_URL}/smtp/email`, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    console.error("Brevo Email API Error:", data);
+    throw new Error(
+      `Brevo SMTP Email failed with status ${response.status}: ${
+        data?.message || JSON.stringify(data)
+      }`
+    );
+  }
+
+  return data; // Returns { messageId: string }
+}
+
+/**
+ * Sends a transactional WhatsApp message using Brevo.
+ */
+export async function sendBrevoWhatsApp(payload: BrevoWhatsAppPayload) {
+  const apiKey = getApiKey();
+
+  const response = await fetch(`${BREVO_API_URL}/whatsapp/sendMessage`, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    console.error("Brevo WhatsApp API Error:", data);
+    throw new Error(
+      `Brevo WhatsApp Message failed with status ${response.status}: ${
+        data?.message || JSON.stringify(data)
+      }`
+    );
+  }
+
+  return data; // Returns { messageId: string } (or { messageIds: string[] })
+}
+
+/**
+ * Creates and schedules a WhatsApp marketing campaign in Brevo.
+ */
+export async function createBrevoWhatsAppCampaign(payload: BrevoWhatsAppCampaignPayload) {
+  const apiKey = getApiKey();
+
+  const response = await fetch(`${BREVO_API_URL}/whatsapp/campaigns`, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    console.error("Brevo WhatsApp Campaign API Error:", data);
+    throw new Error(
+      `Brevo WhatsApp Campaign failed with status ${response.status}: ${
+        data?.message || JSON.stringify(data)
+      }`
+    );
+  }
+
+  return data; // Returns { id: number } (campaign ID)
 }

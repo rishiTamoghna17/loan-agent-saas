@@ -30,8 +30,28 @@ function folderNameFromFile(fileName: string) {
     .slice(0, 100);
 }
 
-export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
-  const [modal, setModal] = useState<"manual" | "import" | null>(null);
+export function AddLeadsMenu({ 
+  disabled, 
+  showOnlyAdd = false,
+  openModal: controlledModal,
+  onModalChange,
+  hideTrigger = false
+}: { 
+  disabled: boolean;
+  showOnlyAdd?: boolean;
+  openModal?: "manual" | "import" | null;
+  onModalChange?: (modal: "manual" | "import" | null) => void;
+  hideTrigger?: boolean;
+}) {
+  const [internalModal, setInternalModal] = useState<"manual" | "import" | null>(null);
+  const modal = controlledModal !== undefined ? controlledModal : internalModal;
+  const setModal = (newModal: "manual" | "import" | null) => {
+    if (onModalChange) {
+      onModalChange(newModal);
+    } else {
+      setInternalModal(newModal);
+    }
+  };
   const [lead, setLead] = useState(emptyLead);
   const [rows, setRows] = useState<LeadDraft[]>([]);
   const [fileName, setFileName] = useState("");
@@ -84,14 +104,18 @@ export function AddLeadsMenu({ disabled }: { disabled: boolean }) {
   }
 
   return <>
-    <div className="flex flex-wrap gap-2">
-      <Button disabled={disabled} onClick={() => setModal("manual")} className="flex items-center gap-1.5">
-        <Plus className="h-4 w-4" /> Add lead
-      </Button>
-      <Button variant="outline" disabled={disabled} onClick={() => setModal("import")} className="flex items-center gap-1.5">
-        <Upload className="h-4 w-4" /> Bulk import
-      </Button>
-    </div>
+    {!hideTrigger && (
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={disabled} onClick={() => setModal("manual")} className="flex items-center gap-1.5">
+          <Plus className="h-4 w-4" /> Add lead
+        </Button>
+        {!showOnlyAdd && (
+          <Button variant="outline" disabled={disabled} onClick={() => setModal("import")} className="flex items-center gap-1.5">
+            <Upload className="h-4 w-4" /> Bulk import
+          </Button>
+        )}
+      </div>
+    )}
     {modal ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" onMouseDown={(event) => event.target === event.currentTarget && !busy && setModal(null)}>
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-2xl">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white p-5">

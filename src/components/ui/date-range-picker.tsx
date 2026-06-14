@@ -18,14 +18,14 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({ from, to, onFromChange, onToChange, className }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [selected, setSelected] = React.useState<{ from?: Date; to?: Date }>(() => {
+  const [selected, setSelected] = React.useState<any>(() => {
     return {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     };
   });
 
-  const handleSelect = (range: { from?: Date; to?: Date } | undefined) => {
+  const handleSelect = (range: any) => {
     if (range) {
       setSelected(range);
       onFromChange(range.from ? format(range.from, "yyyy-MM-dd") : "");
@@ -79,15 +79,19 @@ export function DateRangePicker({ from, to, onFromChange, onToChange, className 
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="min-w-[320px] w-auto p-0 z-[90] max-h-[min(420px,calc(100vh-32px))] overflow-auto" align="start">
+        <DropdownMenuContent className="min-w-[320px] w-auto p-0 z-[90] max-h-[min(420px,calc(100vh-32px))] overflow-auto">
           <DayPicker
             mode="range"
             selected={selected}
             onSelect={handleSelect}
-            initialFocus
+            autoFocus
             components={{
-              IconLeft: () => <ChevronLeft className="h-4 w-4" />,
-              IconRight: () => <ChevronRight className="h-4 w-4" />,
+              Chevron: (props) => {
+                if (props.orientation === "left") {
+                  return <ChevronLeft className="h-4 w-4" />;
+                }
+                return <ChevronRight className="h-4 w-4" />;
+              }
             }}
           />
         </DropdownMenuContent>

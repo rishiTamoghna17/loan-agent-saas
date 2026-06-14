@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
+    const userClient = createClient();
+    const {
+      data: { user },
+      error: userError
+    } = await userClient.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Authentication required before uploading files.' }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -10,8 +21,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    if (file.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 });
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain',
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: 'File format not supported. Please upload PDF, Word, Excel, CSV, text, or images.' }, { status: 400 });
     }
 
     if (file.size > 10 * 1024 * 1024) {
@@ -20,7 +44,8 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const randomSuffix = Math.random().toString(36).substring(2, 15);
+    const fileName = `${user.id}/${Date.now()}-${randomSuffix}.${fileExt}`;
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -28,7 +53,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase.storage
       .from('campaign-attachments')
       .upload(fileName, buffer, {
-        contentType: 'application/pdf',
+        contentType: file.type || 'application/octet-stream',
       });
 
     if (error) {

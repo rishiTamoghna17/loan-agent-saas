@@ -13,6 +13,7 @@ export type ProspectFolder = {
   name: string;
   parent_id: string | null;
   prospect_count: number;
+  archived_at?: string | null;
 };
 
 function buildTree(folders: ProspectFolder[], parentId: string | null, depth = 0): Array<ProspectFolder & { depth: number }> {

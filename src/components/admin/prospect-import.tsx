@@ -19,10 +19,7 @@ export function ProspectImport({ folderId }: { folderId?: string }) {
       header: true,
       skipEmptyLines: true,
       async complete(results) {
-        const formData = new FormData();
-        formData.set("prospects", JSON.stringify(results.data));
-        if (folderId) formData.set("folder_id", folderId);
-        const result = await importProspects(null, formData);
+        const result = await importProspects(results.data, folderId);
         setMessage(result.success ? `Imported ${result.count} prospects.` : result.error ?? "Import failed.");
         setPending(false);
       }

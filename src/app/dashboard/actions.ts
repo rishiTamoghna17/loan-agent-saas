@@ -589,3 +589,598 @@ export async function moveSelectedLeadsToFolder(formData: FormData) {
   const folderId = String(formData.get("folder_id") || "");
   await moveLeadsToFolder(ids, folderId || undefined);
 }
+
+export async function getAgentCampaignTemplates() {
+  const { supabase, agent } = await requireAgent();
+  const { data, error } = await supabase
+    .from("campaign_templates")
+    .select("*")
+    .or(`agent_id.eq.${agent.id},agent_id.is.null`)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching agent campaign templates:", error);
+    return [];
+  }
+  return (data || []).map(t => ({
+    ...t,
+    brochure_attached: t.brochure_attached ?? false,
+    pdf_url: t.pdf_url ?? null,
+    pdf_urls: t.pdf_urls ?? (t.pdf_url ? [t.pdf_url] : []),
+    show_header: t.show_header ?? true,
+    channel: t.channel ?? 'email'
+  }));
+}
+
+export async function saveAgentCampaignTemplate(template: {
+  id?: string;
+  name: string;
+  subject: string;
+  content: string;
+  brochure_attached?: boolean;
+  pdf_urls?: string[] | null;
+  show_header?: boolean;
+  header_content?: string | null;
+  header_bg_color?: string | null;
+  header_text_color?: string | null;
+  footer_content?: string | null;
+  footer_bg_color?: string | null;
+  footer_text_color?: string | null;
+  channel?: 'email' | 'whatsapp' | null;
+}) {
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+
+  const isEditing = template.id && uuidRegex.test(template.id);
+  const templateData = {
+    name: template.name,
+    subject: template.subject,
+    content: template.content,
+    brochure_attached: template.brochure_attached ?? false,
+    pdf_urls: template.pdf_urls ?? [],
+    show_header: template.show_header ?? true,
+    header_content: template.header_content ?? null,
+    header_bg_color: template.header_bg_color ?? '#0f63ff',
+    header_text_color: template.header_text_color ?? '#ffffff',
+    footer_content: template.footer_content ?? null,
+    footer_bg_color: template.footer_bg_color ?? '#f8fafc',
+    footer_text_color: template.footer_text_color ?? '#64748b',
+    channel: template.channel ?? 'email',
+    agent_id: agent.id
+  };
+
+  try {
+    let data, error;
+    if (isEditing) {
+      // Ensure it belongs to the agent
+      const { data: existing, error: checkError } = await supabase
+        .from("campaign_templates")
+        .select("id, agent_id")
+        .eq("id", template.id)
+        .eq("agent_id", agent.id)
+        .maybeSingle();
+
+      if (checkError || !existing) throw new Error("Template not found or unauthorized");
+
+      const updateResult = await supabase
+        .from("campaign_templates")
+        .update(templateData)
+        .eq("id", template.id)
+        .select()
+        .single();
+      data = updateResult.data;
+      error = updateResult.error;
+    } else {
+      const insertResult = await supabase
+        .from("campaign_templates")
+        .insert([{ ...templateData, id: crypto.randomUUID() }])
+        .select()
+        .single();
+      data = insertResult.data;
+      error = insertResult.error;
+    }
+
+    if (error) throw error;
+    revalidatePath("/dashboard/campaigns");
+    return { success: true, data };
+  } catch (error: any) {
+    console.error("Error saving agent template:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteAgentCampaignTemplate(id: string) {
+  const { supabase, agent } = await requireAgent();
+  if (!uuidRegex.test(id)) return { success: false, error: "Invalid template." };
+
+  const { error } = await supabase
+    .from("campaign_templates")
+    .delete()
+    .eq("id", id)
+    .eq("agent_id", agent.id);
+
+  if (error) throw error;
+  revalidatePath("/dashboard/campaigns");
+  return { success: true };
+}
+
+export async function sendAgentCampaignEmail(leadIds: string[], campaignTemplate: string, showHeader?: boolean) {
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SMTP_SENDER_EMAIL || "hello@leadhub.in";
+  const senderName = agent.business_name || agent.agent_name || "LeadHub Agent";
+  const senderPhone = agent.phone || "";
+  const senderContactEmail = agent.email || "";
+
+  if (!apiKey) {
+    console.error("Missing BREVO_API_KEY");
+    return { success: false, error: "Brevo SMTP email service is currently unavailable. Please contact support." };
+  }
+
+  const { data: leads, error: fetchError } = await supabase
+    .from("leads")
+    .select("id, email, name, city, loan_type, required_amount")
+    .in("id", leadIds)
+    .eq("agent_id", agent.id);
+
+  if (fetchError || !leads || leads.length === 0) {
+    console.warn("No leads found for IDs:", leadIds);
+    return { success: false, error: "No leads selected or found" };
+  }
+
+  const { data: customTemplate, error: templateError } = await supabase
+    .from("campaign_templates")
+    .select("id, name, subject, content, brochure_attached, pdf_url, pdf_urls, show_header, header_content, header_bg_color, header_text_color, footer_content, footer_bg_color, footer_text_color")
+    .eq("id", campaignTemplate)
+    .or(`agent_id.eq.${agent.id},agent_id.is.null`)
+    .maybeSingle();
+
+  if (templateError || !customTemplate) {
+    return { success: false, error: "Template not found" };
+  }
+
+  const template = {
+    id: customTemplate.id,
+    name: customTemplate.name,
+    subject: customTemplate.subject,
+    content: customTemplate.content,
+    brochure_attached: customTemplate.brochure_attached,
+    pdf_url: customTemplate.pdf_url,
+    pdf_urls: customTemplate.pdf_urls,
+    show_header: customTemplate.show_header ?? true,
+    header_content: customTemplate.header_content,
+    header_bg_color: customTemplate.header_bg_color,
+    header_text_color: customTemplate.header_text_color,
+    footer_content: customTemplate.footer_content,
+    footer_bg_color: customTemplate.footer_bg_color,
+    footer_text_color: customTemplate.footer_text_color
+  };
+  const templateName = customTemplate.name;
+  const brochureAttached = customTemplate.brochure_attached || false;
+  const templatePdfUrls = customTemplate.pdf_urls || (customTemplate.pdf_url ? [customTemplate.pdf_url] : []);
+
+  let brochure = { attachments: [] as any[], metadata: { enabled: false, attached: false } };
+  if (brochureAttached) {
+    const { getCampaignBrochureAttachment } = await import("@/lib/campaign-attachments");
+    brochure = await getCampaignBrochureAttachment(templatePdfUrls);
+  }
+
+  const { getCampaignBaseUrl, buildBrevoCampaignTags, maskProviderError } = await import("@/lib/campaign-tracking");
+  const baseUrl = getCampaignBaseUrl();
+  const agentSlug = agent.slug || "";
+  const publicPageUrl = `${baseUrl}/agent/${agentSlug}`;
+
+  let successCount = 0;
+  let failedCount = 0;
+
+  for (const lead of leads) {
+    if (!lead.email || !lead.email.includes("@")) {
+      failedCount++;
+      continue;
+    }
+
+    const { createCampaignRenderContext, renderCampaignTemplate } = await import("@/lib/campaign-templates");
+    const renderContext = createCampaignRenderContext({
+      prospect: {
+        id: lead.id,
+        name: lead.name,
+        company_name: lead.loan_type ? `${lead.loan_type} Inquiry` : "your loan inquiry",
+        city: lead.city,
+        loan_category: lead.loan_type
+      },
+      demoUrl: publicPageUrl,
+      signupUrl: publicPageUrl,
+      senderName: senderName,
+      senderPhone: senderPhone,
+      senderEmail: senderContactEmail
+    });
+
+    const rendered = renderCampaignTemplate({
+      ...template,
+      show_header: showHeader !== undefined ? showHeader : template.show_header ?? true
+    }, renderContext);
+
+    const { data: campaignRow, error: createCampaignError } = await supabase
+      .from("email_campaigns")
+      .insert({
+        agent_id: agent.id,
+        lead_id: lead.id,
+        campaign_name: templateName,
+        template_id: template.id,
+        template_name: templateName,
+        status: "sending",
+        provider: "brevo",
+        provider_response: {
+          to: lead.email,
+          template_id: template.id,
+          template_name: templateName,
+          subject: rendered.subject,
+          attachment: brochure.metadata
+        }
+      })
+      .select("id")
+      .single();
+
+    if (createCampaignError || !campaignRow) {
+      console.error(`Error creating campaign attempt for ${lead.email}:`, createCampaignError);
+      failedCount++;
+      continue;
+    }
+
+    try {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": apiKey,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: lead.email, name: lead.name }],
+          subject: rendered.subject,
+          htmlContent: rendered.htmlContent,
+          ...(brochure.attachments.length ? { attachment: brochure.attachments } : {}),
+          tags: buildBrevoCampaignTags(campaignRow.id, template.id),
+          headers: {
+            "X-LeadHub-Campaign-ID": campaignRow.id
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const messageId = result.messageId;
+
+        await supabase
+          .from("email_campaigns")
+          .update({
+            email_sent_at: new Date().toISOString(),
+            message_id: messageId,
+            provider_response: {
+              ...result,
+              template_id: template.id,
+              template_name: templateName,
+              subject: rendered.subject,
+              attachment: brochure.metadata
+            },
+            status: "sent"
+          })
+          .eq("id", campaignRow.id);
+
+        successCount++;
+      } else {
+        const errorData = await response.json().catch(() => ({ status: response.status, message: response.statusText }));
+        console.error(`Brevo API error for ${lead.email}:`, errorData);
+        await supabase
+          .from("email_campaigns")
+          .update({
+            status: "failed",
+            provider_error: maskProviderError({
+              ...errorData,
+              status: response.status
+            })
+          })
+          .eq("id", campaignRow.id);
+        failedCount++;
+      }
+    } catch (error) {
+      console.error(`Failed to send email to ${lead.email}:`, error);
+      await supabase
+        .from("email_campaigns")
+        .update({
+          status: "failed",
+          provider_error: maskProviderError(error instanceof Error ? { message: error.message } : error)
+        })
+        .eq("id", campaignRow.id);
+      failedCount++;
+    }
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/campaigns");
+
+  if (successCount === 0 && leads.length > 0) {
+    return {
+      success: false,
+      error: "Failed to send any emails. Check system configuration.",
+      count: 0,
+      failedCount
+    };
+  }
+
+  return { success: true, count: successCount, failedCount };
+}
+
+export async function getAgentWhatsAppCampaigns() {
+  const { supabase, agent } = await requireAgent();
+  const { data, error } = await supabase
+    .from("whatsapp_campaigns")
+    .select("*")
+    .eq("agent_id", agent.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching agent WhatsApp campaigns:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function sendAgentWhatsAppCampaign(leadIds: string[], templateId: string) {
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderNumberEnv = process.env.CAMPAIGN_SENDER_PHONE || "7001586476";
+  const { normalizePhoneForWhatsApp } = await import("@/lib/format");
+  const senderNumber = normalizePhoneForWhatsApp(agent.whatsapp_number || senderNumberEnv);
+
+  if (!apiKey) {
+    console.error("Missing BREVO_API_KEY");
+    return { success: false, error: "Brevo API key not configured." };
+  }
+
+  const { data: leads, error: fetchError } = await supabase
+    .from("leads")
+    .select("id, phone, name, city, loan_type, required_amount")
+    .in("id", leadIds)
+    .eq("agent_id", agent.id);
+
+  if (fetchError || !leads || leads.length === 0) {
+    return { success: false, error: "No leads selected or found" };
+  }
+
+  const { data: customTemplate, error: templateError } = await supabase
+    .from("campaign_templates")
+    .select("id, name, content")
+    .eq("id", templateId)
+    .or(`agent_id.eq.${agent.id},agent_id.is.null`)
+    .maybeSingle();
+
+  if (templateError || !customTemplate) {
+    return { success: false, error: "Template not found" };
+  }
+
+  const { getCampaignBaseUrl, maskProviderError } = await import("@/lib/campaign-tracking");
+  const baseUrl = getCampaignBaseUrl();
+  const agentSlug = agent.slug || "";
+  const publicPageUrl = `${baseUrl}/agent/${agentSlug}`;
+
+  let successCount = 0;
+  let failedCount = 0;
+
+  for (const lead of leads) {
+    if (!lead.phone) {
+      failedCount++;
+      continue;
+    }
+
+    const recipientNumber = normalizePhoneForWhatsApp(lead.phone);
+
+    // Create campaign ID first to embed in trackable link
+    const campaignId = crypto.randomUUID();
+    const trackableLink = `${publicPageUrl}?wacid=${campaignId}`;
+
+    const { createCampaignRenderContext, renderWhatsAppCampaignTemplate } = await import("@/lib/campaign-templates");
+    const renderContext = createCampaignRenderContext({
+      prospect: {
+        id: lead.id,
+        name: lead.name,
+        company_name: lead.loan_type ? `${lead.loan_type} Inquiry` : "your loan inquiry",
+        city: lead.city,
+        loan_category: lead.loan_type
+      },
+      demoUrl: trackableLink,
+      signupUrl: trackableLink,
+      senderName: agent.business_name || agent.agent_name || "LeadHub Agent",
+      senderPhone: agent.phone || "",
+      senderEmail: agent.email || ""
+    });
+
+    const rendered = renderWhatsAppCampaignTemplate({
+      content: customTemplate.content
+    }, renderContext);
+
+    // Insert as sending
+    const { error: insertError } = await supabase
+      .from("whatsapp_campaigns")
+      .insert({
+        id: campaignId,
+        agent_id: agent.id,
+        lead_id: lead.id,
+        campaign_name: customTemplate.name,
+        template_id: customTemplate.id,
+        template_name: customTemplate.name,
+        message_content: rendered.content,
+        status: "sending"
+      });
+
+    if (insertError) {
+      console.error("Failed to insert whatsapp campaign row:", insertError);
+      failedCount++;
+      continue;
+    }
+
+    try {
+      const response = await fetch("https://api.brevo.com/v3/whatsapp/sendMessage", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": apiKey,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          senderNumber,
+          contactNumbers: [recipientNumber],
+          text: rendered.content
+        })
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok) {
+        await supabase
+          .from("whatsapp_campaigns")
+          .update({
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            event_history: [{ event_type: "sent", status: "sent", occurred_at: new Date().toISOString() }]
+          })
+          .eq("id", campaignId);
+        successCount++;
+      } else {
+        console.error("Brevo WhatsApp API failed:", data);
+        await supabase
+          .from("whatsapp_campaigns")
+          .update({
+            status: "failed",
+            provider_error: maskProviderError(data || "Brevo WhatsApp API Error")
+          })
+          .eq("id", campaignId);
+        failedCount++;
+      }
+    } catch (error) {
+      console.error(`Failed to send WhatsApp message to ${lead.phone}:`, error);
+      await supabase
+        .from("whatsapp_campaigns")
+        .update({
+          status: "failed",
+          provider_error: maskProviderError(error instanceof Error ? { message: error.message } : error)
+        })
+        .eq("id", campaignId);
+      failedCount++;
+    }
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/campaigns");
+
+  return { success: true, count: successCount, failedCount };
+}
+
+export async function trackWhatsAppCampaignClick(wacid: string) {
+  const supabase = (await import("@/lib/supabase/admin")).createAdminClient();
+  const { data: campaign, error: fetchError } = await supabase
+    .from("whatsapp_campaigns")
+    .select("id, status, event_history")
+    .eq("id", wacid)
+    .maybeSingle();
+
+  if (fetchError || !campaign) {
+    return { success: false, error: "Campaign not found" };
+  }
+
+  if (campaign.status === "clicked") {
+    return { success: true, alreadyClicked: true };
+  }
+
+  const occurredAt = new Date().toISOString();
+  const { appendCampaignEvent } = await import("@/lib/campaign-tracking");
+  const eventHistory = appendCampaignEvent(campaign.event_history, {
+    event_type: "clicked",
+    status: "clicked",
+    occurred_at: occurredAt
+  });
+
+  const { error: updateError } = await supabase
+    .from("whatsapp_campaigns")
+    .update({
+      status: "clicked",
+      clicked_at: occurredAt,
+      event_history: eventHistory
+    })
+    .eq("id", campaign.id);
+
+  if (updateError) {
+    console.error("Failed to update whatsapp campaign click tracking:", updateError);
+    return { success: false, error: updateError.message };
+  }
+
+  return { success: true };
+}
+
+export async function getAgentMediaFiles() {
+  const { supabase, agent } = await requireAgent();
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from('campaign-attachments')
+      .list(agent.user_id, {
+        limit: 100,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    if (error) {
+      console.error("Failed to list media files:", error);
+      return { success: false, error: error.message };
+    }
+
+    // Map to include public url
+    const files = (data || []).map(file => {
+      const filePath = `${agent.user_id}/${file.name}`;
+      const { data: urlData } = supabase.storage
+        .from('campaign-attachments')
+        .getPublicUrl(filePath);
+
+      return {
+        name: file.name,
+        id: file.id || "",
+        created_at: file.created_at || new Date().toISOString(),
+        metadata: file.metadata,
+        size: file.metadata?.size || 0,
+        mimeType: file.metadata?.mimetype || 'application/octet-stream',
+        url: urlData.publicUrl
+      };
+    });
+
+    return { success: true, files };
+  } catch (err: any) {
+    console.error("Error listing files:", err);
+    return { success: false, error: err.message || "Failed to list media files" };
+  }
+}
+
+export async function deleteAgentMediaFile(fileName: string) {
+  const { supabase, agent } = await requireAgent();
+  if (isDashboardLocked(agent)) return { success: false, error: "Your account is read-only because the trial has ended." };
+
+  try {
+    const filePath = `${agent.user_id}/${fileName}`;
+    const { error } = await supabase.storage
+      .from('campaign-attachments')
+      .remove([filePath]);
+
+    if (error) {
+      console.error("Failed to delete media file:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleting file:", err);
+    return { success: false, error: err.message || "Failed to delete file" };
+  }
+}

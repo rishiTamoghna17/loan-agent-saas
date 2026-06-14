@@ -26,8 +26,29 @@ const EVENT_CONFIG: Record<string, { status: string; timestampField?: string; sc
   bounced: { status: "bounced", timestampField: "bounced_at" },
   blocked: { status: "blocked", timestampField: "bounced_at" },
   spam: { status: "spam", timestampField: "bounced_at" },
-  replied: { status: "replied", timestampField: "replied_at", prospectStatus: "replied" }
+  replied: { status: "replied", timestampField: "replied_at", prospectStatus: "replied" },
+  read: { status: "read", timestampField: "clicked_at" } // Map read precisely to trigger Blue Ticks status
 };
+
+const STATUS_PRECEDENCE: Record<string, number> = {
+  sending: 0,
+  sent: 1,
+  delivered: 2,
+  opened: 3,
+  clicked: 4,
+  replied: 5,
+  bounced: 5,
+  blocked: 5,
+  spam: 5,
+  failed: 5
+};
+
+function shouldUpdateStatus(currentStatus: string | null | undefined, newStatus: string): boolean {
+  if (!currentStatus) return true;
+  const currentPrec = STATUS_PRECEDENCE[currentStatus] ?? 0;
+  const newPrec = STATUS_PRECEDENCE[newStatus] ?? 0;
+  return newPrec > currentPrec;
+}
 
 function webhookAuthorized(req: Request) {
   const secret = process.env.BREVO_WEBHOOK_SECRET;
@@ -143,20 +164,37 @@ export async function POST(req: Request) {
       const idCandidates = Array.from(new Set([messageId, `<${messageId}>`]));
       let matchStrategy = "message_id";
       let campaignError: { message: string } | null = null;
-      let campaign: { id: string; prospect_id: string; event_history: unknown } | null = null;
+      let campaign: any = null;
+      let isWhatsApp = false;
 
+      // 1. Try matching with email_campaigns
       const exactResult = await supabase
         .from("email_campaigns")
-        .select("id, prospect_id, event_history")
+        .select("id, status, prospect_id, lead_id, event_history")
         .in("message_id", idCandidates)
         .maybeSingle();
+      
       campaign = exactResult.data;
       campaignError = exactResult.error;
+
+      // 2. If not matched, try matching with whatsapp_campaigns
+      if (!campaign && !campaignError) {
+        const waResult = await supabase
+          .from("whatsapp_campaigns")
+          .select("id, status, lead_id, event_history")
+          .in("message_id", idCandidates)
+          .maybeSingle();
+
+        if (waResult.data) {
+          campaign = waResult.data;
+          isWhatsApp = true;
+        }
+      }
 
       if (!campaign && taggedCampaignId) {
         const taggedResult = await supabase
           .from("email_campaigns")
-          .select("id, prospect_id, event_history")
+          .select("id, status, prospect_id, lead_id, event_history")
           .eq("id", taggedCampaignId)
           .maybeSingle();
         campaign = taggedResult.data;
@@ -167,9 +205,11 @@ export async function POST(req: Request) {
       if (!campaign && typeof event.email === "string" && event.email.includes("@")) {
         const eventTime = new Date(occurredAt).getTime();
         const from = new Date(eventTime - 48 * 60 * 60 * 1000).toISOString();
+        
+        // Try matching via prospects first
         let fallbackQuery = supabase
           .from("email_campaigns")
-          .select("id, prospect_id, event_history, email_sent_at, template_id, prospects!inner(email)")
+          .select("id, status, prospect_id, lead_id, event_history, email_sent_at, template_id, message_id, prospects!inner(email)")
           .ilike("prospects.email", event.email.trim())
           .not("email_sent_at", "is", null)
           .gte("email_sent_at", from)
@@ -178,10 +218,40 @@ export async function POST(req: Request) {
           .limit(2);
         if (templateId) fallbackQuery = fallbackQuery.eq("template_id", templateId);
         const fallbackResult = await fallbackQuery;
-        if (!fallbackResult.error && fallbackResult.data?.length === 1) {
-          campaign = fallbackResult.data[0];
+        
+        const fallbackCampaigns = (fallbackResult.data || []).filter(c => 
+          !c.message_id || idCandidates.includes(normalizeBrevoMessageId(c.message_id))
+        );
+
+        if (fallbackCampaigns.length === 1) {
+          campaign = fallbackCampaigns[0];
           campaignError = null;
           matchStrategy = "unique_recipient_window";
+        }
+        
+        // If not found, try matching via leads
+        if (!campaign) {
+          let leadFallbackQuery = supabase
+            .from("email_campaigns")
+            .select("id, status, prospect_id, lead_id, event_history, email_sent_at, template_id, message_id, leads!inner(email)")
+            .ilike("leads.email", event.email.trim())
+            .not("email_sent_at", "is", null)
+            .gte("email_sent_at", from)
+            .lte("email_sent_at", occurredAt)
+            .order("email_sent_at", { ascending: false })
+            .limit(2);
+          if (templateId) leadFallbackQuery = leadFallbackQuery.eq("template_id", templateId);
+          const leadFallbackResult = await leadFallbackQuery;
+          
+          const leadFallbackCampaigns = (leadFallbackResult.data || []).filter(c => 
+            !c.message_id || idCandidates.includes(normalizeBrevoMessageId(c.message_id))
+          );
+
+          if (leadFallbackCampaigns.length === 1) {
+            campaign = leadFallbackCampaigns[0];
+            campaignError = null;
+            matchStrategy = "unique_recipient_window_lead";
+          }
         }
       }
 
@@ -209,51 +279,84 @@ export async function POST(req: Request) {
       });
 
       const updates: Record<string, unknown> = {
-        status: config.status,
-        last_event_at: occurredAt,
         event_history: eventHistory
       };
+
+      if (shouldUpdateStatus(campaign.status, config.status)) {
+        updates.status = config.status;
+      }
 
       if (config.timestampField) {
         updates[config.timestampField] = occurredAt;
       }
 
-      const { error: updateError } = await supabase
-        .from("email_campaigns")
-        .update(updates)
-        .eq("id", campaign.id);
+      if (isWhatsApp) {
+        // Update WhatsApp campaign state
+        const { error: updateError } = await supabase
+          .from("whatsapp_campaigns")
+          .update(updates)
+          .eq("id", campaign.id);
 
-      if (updateError) {
-        console.error("Failed to update campaign webhook event", updateError);
+        if (updateError) {
+          console.error("Failed to update WhatsApp campaign webhook event", updateError);
+          await recordWebhookEvent(supabase, event, {
+            eventType,
+            messageId,
+            campaignId: campaign.id,
+            processingStatus: "failed",
+            unmatchedReason: updateError.message
+          });
+          continue;
+        }
+
+        // WhatsApp read/clicks can trigger lead dashboard updates if needed
         await recordWebhookEvent(supabase, event, {
           eventType,
           messageId,
           campaignId: campaign.id,
-          prospectId: campaign.prospect_id,
-          processingStatus: "failed",
-          unmatchedReason: updateError.message
+          processingStatus: "processed"
         });
-        continue;
+
+      } else {
+        // Update Email campaign state
+        const { error: updateError } = await supabase
+          .from("email_campaigns")
+          .update(updates)
+          .eq("id", campaign.id);
+
+        if (updateError) {
+          console.error("Failed to update campaign webhook event", updateError);
+          await recordWebhookEvent(supabase, event, {
+            eventType,
+            messageId,
+            campaignId: campaign.id,
+            prospectId: campaign.prospect_id || undefined,
+            processingStatus: "failed",
+            unmatchedReason: updateError.message
+          });
+          continue;
+        }
+
+        if (config.score && !alreadyScored && campaign.prospect_id) {
+          await updateLeadScore(campaign.prospect_id, config.score);
+        }
+
+        if (config.prospectStatus && campaign.prospect_id) {
+          await supabase
+            .from("prospects")
+            .update({ status: config.prospectStatus })
+            .eq("id", campaign.prospect_id);
+        }
+
+        await recordWebhookEvent(supabase, event, {
+          eventType,
+          messageId,
+          campaignId: campaign.id,
+          prospectId: campaign.prospect_id || undefined,
+          processingStatus: alreadyScored ? "duplicate" : "processed"
+        });
       }
 
-      if (config.score && !alreadyScored) {
-        await updateLeadScore(campaign.prospect_id, config.score);
-      }
-
-      if (config.prospectStatus) {
-        await supabase
-          .from("prospects")
-          .update({ status: config.prospectStatus })
-          .eq("id", campaign.prospect_id);
-      }
-
-      await recordWebhookEvent(supabase, event, {
-        eventType,
-        messageId,
-        campaignId: campaign.id,
-        prospectId: campaign.prospect_id,
-        processingStatus: alreadyScored ? "duplicate" : "processed"
-      });
       processed++;
     }
 
