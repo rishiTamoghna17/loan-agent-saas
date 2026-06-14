@@ -9,7 +9,10 @@ import {
   ArrowLeft, 
   Mail, 
   MessageSquare,
-  Sparkles
+  Sparkles,
+  Search,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -57,63 +60,94 @@ export function CreateCampaignClient({
   const router = useRouter();
   const [activeChannel, setActiveChannel] = useState<'email' | 'whatsapp'>('email');
 
-  // Compute selected leads based on query parameters
-  const { selectedLeads, audienceSummary } = useMemo(() => {
-    const { target, folderId, leadId } = queryParams;
+  // Audience Target Selection Mode
+  const [selectionMode, setSelectionMode] = useState<"all" | "folder" | "individual">(() => {
+    if (queryParams.leadId) return "individual";
+    if (queryParams.folderId) return "folder";
+    return "all";
+  });
 
-    if (leadId) {
-      const singleLead = leads.find(l => l.id === leadId);
-      return {
-        selectedLeads: singleLead ? [singleLead] : [],
-        audienceSummary: {
-          type: "single",
-          title: "Individual Lead Target",
-          description: singleLead 
-            ? `Outreach targeted at ${singleLead.name} (${singleLead.phone || singleLead.email || "No contact info"})`
-            : "No matching lead found"
-        }
-      };
+  // Folder selection state
+  const [selectedFolderId, setSelectedFolderId] = useState<string>(queryParams.folderId || "");
+  const [folderSearch, setFolderSearch] = useState("");
+
+  // Individual selection state
+  const [individualSelectedIds, setIndividualSelectedIds] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    if (queryParams.leadId) {
+      initial[queryParams.leadId] = true;
+    } else {
+      // Default: select all leads initially
+      leads.forEach(l => {
+        initial[l.id] = true;
+      });
     }
+    return initial;
+  });
+  const [leadSearch, setLeadSearch] = useState("");
 
-    if (folderId) {
-      const targetFolder = folders.find(f => f.id === folderId);
-      const folderLeads = leads.filter(l => l.folder_id === folderId);
-      return {
-        selectedLeads: folderLeads,
-        audienceSummary: {
-          type: "folder",
-          title: `Folder Segment: ${targetFolder?.name || "Custom Segment"}`,
-          description: `Outreach targeted at ${folderLeads.length} leads in this folder.`
-        }
-      };
+  // Filter folders based on text search
+  const filteredFoldersList = useMemo(() => {
+    return folders.filter(f => 
+      f.name.toLowerCase().includes(folderSearch.toLowerCase())
+    );
+  }, [folders, folderSearch]);
+
+  // Filter leads list for individual selector UI view
+  const filteredLeadsList = useMemo(() => {
+    return leads.filter(l => 
+      l.name.toLowerCase().includes(leadSearch.toLowerCase()) ||
+      (l.email && l.email.toLowerCase().includes(leadSearch.toLowerCase())) ||
+      (l.phone && l.phone.includes(leadSearch))
+    );
+  }, [leads, leadSearch]);
+
+  // Compute selected leads dynamically based on active selection mode
+  const selectedLeads = useMemo(() => {
+    if (selectionMode === "all") {
+      return leads;
     }
-
-    if (target === "all") {
-      return {
-        selectedLeads: leads,
-        audienceSummary: {
-          type: "all",
-          title: "All Active Leads",
-          description: `Outreach targeted at all ${leads.length} active workspace leads.`
-        }
-      };
+    if (selectionMode === "folder") {
+      if (!selectedFolderId) return [];
+      return leads.filter(l => l.folder_id === selectedFolderId);
     }
-
-    // Default fallback (Target All)
-    return {
-      selectedLeads: leads,
-      audienceSummary: {
-        type: "all",
-        title: "All Workspace Leads (Default)",
-        description: `No criteria specified. Target audience set to all ${leads.length} active leads.`
-      }
-    };
-  }, [queryParams, leads, folders]);
+    if (selectionMode === "individual") {
+      return leads.filter(l => !!individualSelectedIds[l.id]);
+    }
+    return leads;
+  }, [selectionMode, leads, selectedFolderId, individualSelectedIds]);
 
   const selectedLeadIds = useMemo(() => selectedLeads.map(l => l.id), [selectedLeads]);
 
+  // Checkbox toggle helpers
+  const allLeadsSelected = useMemo(() => {
+    return leads.length > 0 && leads.every(l => !!individualSelectedIds[l.id]);
+  }, [leads, individualSelectedIds]);
+
+  const handleToggleAll = () => {
+    if (allLeadsSelected) {
+      const updated: Record<string, boolean> = {};
+      leads.forEach(l => {
+        updated[l.id] = false;
+      });
+      setIndividualSelectedIds(updated);
+    } else {
+      const updated: Record<string, boolean> = {};
+      leads.forEach(l => {
+        updated[l.id] = true;
+      });
+      setIndividualSelectedIds(updated);
+    }
+  };
+
+  const handleToggleLead = (leadId: string) => {
+    setIndividualSelectedIds(prev => ({
+      ...prev,
+      [leadId]: !prev[leadId]
+    }));
+  };
+
   const handleSendSuccess = () => {
-    // Redirect to campaigns tab on success
     router.push("/dashboard/campaigns");
     router.refresh();
   };
@@ -168,42 +202,200 @@ export function CreateCampaignClient({
         {/* LEFT COLUMN: Audience Segment Context */}
         <div className="lg:col-span-4 space-y-5">
           <Card className="border-slate-200/80 shadow-sm bg-white overflow-hidden rounded-2xl">
+            
+            {/* Header Title */}
             <div className="border-b border-slate-100 px-5 py-4 bg-slate-50/50 flex items-center gap-2">
-              {audienceSummary.type === "single" ? (
-                <User className="h-4 w-4 text-blue-600" />
-              ) : audienceSummary.type === "folder" ? (
-                <Folder className="h-4 w-4 text-amber-500" />
-              ) : (
-                <Users className="h-4 w-4 text-emerald-600" />
-              )}
+              <Users className="h-4 w-4 text-brand-blue" />
               <h3 className="font-bold text-slate-900 text-sm">Target Segment</h3>
             </div>
-            <CardContent className="p-5 space-y-4">
-              <div>
-                <p className="text-base font-extrabold text-slate-950">{audienceSummary.title}</p>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">{audienceSummary.description}</p>
+
+            <CardContent className="p-5">
+              
+              {/* Segmented Picker Tabs */}
+              <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 mb-4 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setSelectionMode("all")}
+                  className={`rounded-md py-1.5 text-xs font-semibold text-center transition-all ${
+                    selectionMode === "all"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  All Leads
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectionMode("folder")}
+                  className={`rounded-md py-1.5 text-xs font-semibold text-center transition-all ${
+                    selectionMode === "folder"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Folders
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectionMode("individual")}
+                  className={`rounded-md py-1.5 text-xs font-semibold text-center transition-all ${
+                    selectionMode === "individual"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Individual
+                </button>
               </div>
 
-              {/* Targeted List Preview */}
+              {/* Mode Specific Selection Controls */}
+              
+              {/* A. All Leads details */}
+              {selectionMode === "all" && (
+                <div className="p-3 bg-blue-50/40 border border-blue-100 rounded-xl mb-4 text-xs">
+                  <p className="font-bold text-brand-blue flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" /> Targeting All Workspace Leads
+                  </p>
+                  <p className="text-slate-500 mt-1 leading-relaxed">
+                    This selection targets all {leads.length} active leads currently registered under your agent account.
+                  </p>
+                </div>
+              )}
+
+              {/* B. Folders searchable dropdown select */}
+              {selectionMode === "folder" && (
+                <div className="space-y-2.5 mb-4 bg-slate-50 border border-slate-200/60 p-3.5 rounded-xl">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Search & Select Folder</label>
+                  
+                  {/* Search filter input */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search folders..."
+                      value={folderSearch}
+                      onChange={(e) => setFolderSearch(e.target.value)}
+                      className="w-full h-8 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Dropdown select */}
+                  <select
+                    value={selectedFolderId}
+                    onChange={(e) => setSelectedFolderId(e.target.value)}
+                    className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="">-- Choose a target folder --</option>
+                    {filteredFoldersList.map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.name} ({leads.filter(l => l.folder_id === f.id).length} leads)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* C. Individual lead select controls */}
+              {selectionMode === "individual" && (
+                <div className="space-y-2.5 mb-4 bg-slate-50 border border-slate-200/60 p-3.5 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Recipients Selection</label>
+                    <button
+                      type="button"
+                      onClick={handleToggleAll}
+                      className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      {allLeadsSelected ? "Deselect All" : "Select All Leads"}
+                    </button>
+                  </div>
+                  
+                  {/* Lead filter search */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Filter leads by name, email, phone..."
+                      value={leadSearch}
+                      onChange={(e) => setLeadSearch(e.target.value)}
+                      className="w-full h-8 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Targeted List Preview Registry */}
               <div className="border-t border-slate-100 pt-4 space-y-3">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Target Recipients ({selectedLeads.length})</p>
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {selectedLeads.map((lead) => (
-                    <div key={lead.id} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 text-xs flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate">{lead.name}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">{lead.phone || lead.email || "No details"}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Target Recipients ({selectedLeads.length})
+                  </p>
+                  {selectionMode === "individual" && (
+                    <span className="text-[10px] font-semibold text-slate-500">
+                      Ticked: {selectedLeads.length} / {leads.length}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  
+                  {/* Render with check triggers when individual selection is active */}
+                  {selectionMode === "individual" ? (
+                    filteredLeadsList.map((lead) => {
+                      const isSelected = !!individualSelectedIds[lead.id];
+                      return (
+                        <div
+                          key={lead.id}
+                          onClick={() => handleToggleLead(lead.id)}
+                          className={`flex items-start gap-3 p-2.5 rounded-xl border transition-all cursor-pointer text-xs ${
+                            isSelected 
+                              ? "border-blue-200 bg-blue-50/20" 
+                              : "border-slate-100 bg-slate-50/30 opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            {isSelected ? (
+                              <CheckSquare className="h-4 w-4 text-brand-blue" />
+                            ) : (
+                              <Square className="h-4 w-4 text-slate-300" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-slate-900 truncate">{lead.name}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{lead.phone || lead.email || "No details"}</p>
+                          </div>
+                          <span className="shrink-0 text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 uppercase font-semibold">
+                            {lead.status}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    
+                    // Render simple read-only listing for All / Folder targets
+                    selectedLeads.map((lead) => (
+                      <div key={lead.id} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 text-xs flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 truncate">{lead.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">{lead.phone || lead.email || "No details"}</p>
+                        </div>
+                        <span className="shrink-0 text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 uppercase font-semibold">
+                          {lead.status}
+                        </span>
                       </div>
-                      <span className="shrink-0 text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 uppercase font-semibold">
-                        {lead.status}
-                      </span>
-                    </div>
-                  ))}
+                    ))
+                  )}
+
+                  {/* Empty States */}
+                  {selectionMode === "folder" && !selectedFolderId && (
+                    <p className="text-xs text-slate-400 text-center py-6">Please select a target folder above.</p>
+                  )}
+
                   {selectedLeads.length === 0 && (
-                    <p className="text-xs text-slate-400 text-center py-4">No recipients pre-selected.</p>
+                    <p className="text-xs text-slate-400 text-center py-6">No recipients select target criteria.</p>
                   )}
                 </div>
               </div>
+
             </CardContent>
           </Card>
         </div>
