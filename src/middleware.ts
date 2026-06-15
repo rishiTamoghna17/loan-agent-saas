@@ -12,6 +12,24 @@ export async function middleware(request: NextRequest) {
   // Extract subdomain based on environment configurations
   let subdomain: string | null = null;
   const appHost = (process.env.NEXT_PUBLIC_APP_HOST || "leadhub.com").toLowerCase();
+  const rootDomain = "leadhub.com";
+  const cleanAppHost = appHost.replace(/^https?:\/\//, "").split(":")[0];
+
+  const isPrimaryDomain = 
+    hostname === rootDomain || 
+    hostname === `www.${rootDomain}` || 
+    hostname === cleanAppHost || 
+    hostname === `www.${cleanAppHost}` || 
+    hostname === "localhost" || 
+    hostname === "127.0.0.1";
+
+  // A custom domain is any hostname that is not a primary domain and does not end with our primary domain/local domain suffixes
+  const isCustomDomain = 
+    !isPrimaryDomain && 
+    !hostname.endsWith(`.${cleanAppHost}`) && 
+    !hostname.endsWith(`.${rootDomain}`) && 
+    !hostname.endsWith(".localhost") && 
+    !hostname.endsWith(".lvh.me");
 
   if (hostname.endsWith(`.${appHost}`)) {
     subdomain = hostname.replace(`.${appHost}`, "");
@@ -19,6 +37,20 @@ export async function middleware(request: NextRequest) {
     subdomain = hostname.replace(".localhost", "");
   } else if (hostname.endsWith(".lvh.me")) {
     subdomain = hostname.replace(".lvh.me", "");
+  }
+
+  // Handle custom domain rewrites to serve static pages and assets
+  if (isCustomDomain) {
+    const isSystemAsset = pathname.startsWith("/_next") || pathname === "/favicon.ico";
+    if (isSystemAsset) {
+      return updateSession(request);
+    }
+    
+    const url = request.nextUrl.clone();
+    url.pathname = "/api/website/serve-custom";
+    url.searchParams.set("host", hostname);
+    url.searchParams.set("path", pathname);
+    return NextResponse.rewrite(url);
   }
 
   // Define SaaS system routes and reserved subdomains to skip rewrite
