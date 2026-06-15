@@ -160,7 +160,7 @@ export default async function AgentPage({ params }: PageProps) {
     });
 
     // Also rewrite relative references that do not start with "/"
-    html = html.replace(/(href|src)="(?!\/\/|http|https|mailto:|tel:|#|\/)([^"]+)"/g, `$1="${hugoDeploymentUrl}/$2"`);
+    html = html.replace(/(href|src)="(?!\/\/|http|https|mailto:|tel:|#|\/|data:)([^"]+)"/g, `$1="${hugoDeploymentUrl}/$2"`);
 
     return (
       <div dangerouslySetInnerHTML={{ __html: html }} />
