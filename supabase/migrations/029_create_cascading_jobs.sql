@@ -16,6 +16,7 @@ create table if not exists public.cascading_jobs (
 alter table public.cascading_jobs enable row level security;
 
 -- Policy to allow agents to see their own delayed cascading jobs
+drop policy if exists "Agents can manage their own cascading_jobs" on public.cascading_jobs;
 create policy "Agents can manage their own cascading_jobs"
 on public.cascading_jobs
 for all
@@ -24,6 +25,7 @@ using (agent_id = (select id from public.agents where user_id = auth.uid()))
 with check (agent_id = (select id from public.agents where user_id = auth.uid()));
 
 -- Service role bypass for workers
+drop policy if exists "Service role can manage cascading_jobs" on public.cascading_jobs;
 create policy "Service role can manage cascading_jobs"
 on public.cascading_jobs
 for all

@@ -31,6 +31,7 @@ import {
   Pencil
 } from "lucide-react";
 import { ContactLeadButton } from "@/components/dashboard/contact-lead-button";
+import { WebsiteAlertBanner } from "@/components/dashboard/WebsiteAlertBanner";
 import { AddLeadsMenu } from "@/components/dashboard/add-leads-menu";
 import { LeadActionsPanel } from "@/components/dashboard/lead-actions-panel";
 import { LeadFilters } from "@/components/dashboard/lead-filters";
@@ -75,6 +76,8 @@ type DashboardContentProps = {
     slug?: string;
     trial_ends_at?: string;
     plan_status?: string;
+    website_slug?: string;
+    is_website_published?: boolean;
   };
   trialDaysRemaining: number;
   isTrialExpired: boolean;
@@ -326,6 +329,9 @@ export function DashboardContent({
       ) : null}
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 pb-24 md:pb-6">
+        {/* Website Status Alert Banner */}
+        <WebsiteAlertBanner agentProfile={agent} />
+
         {/* Desktop header */}
         <div className="hidden md:flex mb-8 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">

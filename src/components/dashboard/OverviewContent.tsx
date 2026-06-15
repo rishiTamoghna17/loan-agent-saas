@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddLeadsMenu } from "@/components/dashboard/add-leads-menu";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { WebsiteAlertBanner } from "@/components/dashboard/WebsiteAlertBanner";
 
 type OverviewContentProps = {
   agent: any;
@@ -51,6 +52,9 @@ export function OverviewContent({
         </div>
         <AddLeadsMenu disabled={isTrialExpired} />
       </div>
+
+      {/* Website Status Alert Banner */}
+      <WebsiteAlertBanner agentProfile={agent} />
       
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
