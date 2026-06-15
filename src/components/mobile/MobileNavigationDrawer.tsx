@@ -20,7 +20,8 @@ import {
   Archive,
   RotateCcw,
   Loader2,
-  Sparkles
+  Sparkles,
+  Globe
 } from "lucide-react";
 import { LeadHubMark } from "@/components/brand/lead-hub-mark";
 import { Button } from "@/components/ui/button";
@@ -252,7 +253,8 @@ export function MobileNavigationDrawer({
   const navItems = [
     { href: "/dashboard", label: "Overview", icon: Home },
     { href: "/dashboard/agent", label: "Agent Desk", icon: Sparkles },
-    { href: "/dashboard/follow-ups", label: "Follow-ups", icon: CalendarCheck }
+    { href: "/dashboard/follow-ups", label: "Follow-ups", icon: CalendarCheck },
+    { href: "/dashboard/website", label: "Website Wizard", icon: Globe }
   ];
 
   return (

@@ -1,0 +1,49 @@
+  <footer id="contact">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>About {{ .Site.Home.Params.name }}</h4>
+          <p>{{ .Site.Home.Params.bio | truncate 180 }}</p>
+        </div>
+        <div class="footer-col">
+          <h4>Quick Links</h4>
+          <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/about">About Me</a></li>
+            <li><a href="/services">Services Offered</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Get in Touch</h4>
+          <ul class="contact-info-list" style="margin-top: 0.5rem; gap: 0.6rem;">
+            {{ with .Site.Home.Params.contact }}
+              {{ if .phone }}
+              <li class="contact-info-item">
+                <span class="label">Phone</span>
+                <span class="value">{{ .phone }}</span>
+              </li>
+              {{ end }}
+              {{ if .email }}
+              <li class="contact-info-item">
+                <span class="label">Email</span>
+                <span class="value">{{ .email }}</span>
+              </li>
+              {{ end }}
+              {{ if .address }}
+              <li class="contact-info-item">
+                <span class="label">Office</span>
+                <span class="value">{{ .address }}</span>
+              </li>
+              {{ end }}
+            {{ end }}
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="copyright">&copy; {{ now.Format "2006" }} {{ .Site.Home.Params.name }}. Powered by LeadHub SaaS.</p>
+        <p class="licensing">Equal Housing Opportunity Lender</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

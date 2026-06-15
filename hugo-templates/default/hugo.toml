@@ -1,0 +1,5 @@
+baseURL = "/"
+languageCode = "en-us"
+title = "Loan Agent Portal"
+# We put layout files directly in layouts/, so no separate theme is needed.
+disableKinds = ["taxonomy", "term"]

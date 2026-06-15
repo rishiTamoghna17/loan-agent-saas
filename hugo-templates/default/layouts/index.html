@@ -1,0 +1,76 @@
+{{ partial "header.html" . }}
+
+<main>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>Custom Mortgage Solutions by <br><span>{{ .Site.Home.Params.name }}</span></h1>
+      <p class="hero-subtitle">Simplifying your home buying journey with transparent rates, personalized terms, and expert advice tailored to your financial goals.</p>
+      <div class="hero-buttons">
+        <a href="#contact" class="btn btn-primary">Get a Quote</a>
+        <a href="/services" class="btn btn-secondary">Explore Services</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Biography / Profile Section -->
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">Why Work With <span>Me</span></h2>
+      <div class="about-grid">
+        <div class="about-content">
+          <p>{{ .Site.Home.Params.bio }}</p>
+          <p>Whether you're buying your first home, upgrading to a new one, or looking to refinance your existing loan, I am here to guide you through every step of the mortgage process. Let's make your homeownership dreams a reality.</p>
+          <a href="/about" class="btn btn-secondary" style="margin-top: 1rem;">Read Full Bio</a>
+        </div>
+        
+        <div class="about-card">
+          <h3>Contact Specialist</h3>
+          <ul class="contact-info-list">
+            {{ with .Site.Home.Params.contact }}
+              {{ if .phone }}
+              <li class="contact-info-item">
+                <span class="label">Phone</span>
+                <span class="value">{{ .phone }}</span>
+              </li>
+              {{ end }}
+              {{ if .email }}
+              <li class="contact-info-item">
+                <span class="label">Email</span>
+                <span class="value">{{ .email }}</span>
+              </li>
+              {{ end }}
+              {{ if .address }}
+              <li class="contact-info-item">
+                <span class="label">Office</span>
+                <span class="value">{{ .address }}</span>
+              </li>
+              {{ end }}
+            {{ end }}
+          </ul>
+          <a href="mailto:{{ (index .Site.Home.Params.contact "email") }}" class="btn btn-primary" style="margin-top: 2rem; width: 100%;">Email Me Directly</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Section -->
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">Specialized <span>Loan Services</span></h2>
+      <div class="services-grid">
+        {{ range .Site.Home.Params.services }}
+        <div class="service-card">
+          <div class="service-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
+          <h3>{{ .title }}</h3>
+          <p>{{ .description }}</p>
+        </div>
+        {{ end }}
+      </div>
+    </div>
+  </section>
+</main>
+
+{{ partial "footer.html" . }}

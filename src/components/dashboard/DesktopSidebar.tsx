@@ -21,7 +21,8 @@ import {
   RotateCcw,
   Mail,
   Loader2,
-  Sparkles
+  Sparkles,
+  Globe
 } from "lucide-react";
 import { LeadHubMark } from "@/components/brand/lead-hub-mark";
 import { logout } from "@/app/auth/actions";
@@ -108,6 +109,7 @@ export function DesktopSidebar({
     { label: "Overview", href: "/dashboard", icon: Home },
     { label: "Agent Desk", href: "/dashboard/agent", icon: Sparkles },
     { label: "Follow-ups", href: "/dashboard/follow-ups", icon: CalendarCheck },
+    { label: "Website Wizard", href: "/dashboard/website", icon: Globe },
     { label: "Import data", href: "/dashboard/leads?import=true", icon: UploadCloud },
   ];
 

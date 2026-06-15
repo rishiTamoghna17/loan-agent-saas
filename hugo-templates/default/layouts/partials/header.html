@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ if .IsHome }}{{ .Site.Home.Params.name }} | Professional Mortgage & Loan Agent{{ else }}{{ .Title }} | {{ .Site.Home.Params.name }}{{ end }}</title>
+  <meta name="description" content="{{ if .IsHome }}Get in touch with {{ .Site.Home.Params.name }} to find the best mortgage rates, refinancing options, and personalized loan services.{{ else }}{{ .Summary }}{{ end }}">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container navbar">
+      <a href="/" class="logo">{{ .Site.Home.Params.name }}</a>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="/" class="{{ if .IsHome }}active{{ end }}">Home</a></li>
+          <li><a href="/about" class="{{ if eq .RelPermalink "/about/" }}active{{ end }}">About Me</a></li>
+          <li><a href="/services" class="{{ if eq .RelPermalink "/services/" }}active{{ end }}">Services</a></li>
+          <li><a href="#contact" class="nav-cta">Apply Now</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
