@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { 
-  Globe, 
-  Sparkles, 
-  Laptop, 
-  Smartphone, 
-  Check, 
-  Loader2, 
-  ArrowLeft, 
-  ArrowRight, 
-  Upload, 
+import {
+  Globe,
+  Sparkles,
+  Laptop,
+  Smartphone,
+  Check,
+  Loader2,
+  ArrowLeft,
+  ArrowRight,
+  Upload,
   MessageSquare,
   FileText,
   Phone,
@@ -96,7 +96,7 @@ function compressAndResizeImage(
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         resolve(canvas.toDataURL(mimeType, mimeType === "image/png" ? undefined : quality));
       };
       img.onerror = () => {
@@ -115,11 +115,11 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
   // Wizard steps: 0 (Template select), 1 (Identity), 2 (Messaging), 3 (Services), 4 (Contact)
   const [step, setStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(agent.chosen_theme || "authority");
-  
+
   // File upload states (as base64 data URLs)
   const [logoPreview, setLogoPreview] = useState<string>(agent.logo_url || "");
   const [photoPreview, setPhotoPreview] = useState<string>(agent.photo_url || "");
-  
+
   // Services state (editable descriptions)
   const [services, setServices] = useState<ServiceItem[]>(() => {
     const defaults = [
@@ -185,7 +185,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
   // Preview options
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
-  
+
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [buildLogs, setBuildLogs] = useState<string[]>([]);
@@ -243,7 +243,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
     setIsGenerating(true);
     setErrorMessage("");
     setBuildLogs(["1. Saving profile details to database...", "2. Formatting YAML Front Matter structures..."]);
-    
+
     const addLog = (log: string, delay: number) => {
       return new Promise<void>((resolve) => {
         setTimeout(() => {
@@ -294,12 +294,12 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
       }
 
       await addLog("5. Site content deployed to GitHub successfully!", 500);
-      
+
       const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      const domain = isLocal 
-        ? `http://${result.website_slug}.localhost:${window.location.port || '3000'}` 
-        : `https://${result.website_slug}.leadhub.com`;
-      
+      const domain = isLocal
+        ? `http://${result.website_slug}.localhost:${window.location.port || '3000'}`
+        : `${process.env.NEXT_PUBLIC_APP_HOST}`;
+
       setCompiledUrl(domain);
       setBuildSuccess(true);
     } catch (err: any) {
@@ -395,9 +395,9 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
         <div className="space-y-6">
           <h2 className="text-lg font-bold text-white mb-4">Choose Your Visual Direction</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
+
             {/* Template Card: Modern Authority */}
-            <div 
+            <div
               onClick={() => {
                 setSelectedTemplate("authority");
                 setStep(1);
@@ -429,7 +429,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
             </div>
 
             {/* Template Card: Minimal Specialist */}
-            <div 
+            <div
               onClick={() => {
                 setSelectedTemplate("minimal");
                 setStep(1);
@@ -455,7 +455,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
             </div>
 
             {/* Template Card: Personal Brand */}
-            <div 
+            <div
               onClick={() => {
                 setSelectedTemplate("brand");
                 setStep(1);
@@ -480,32 +480,31 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
       ) : (
         /* INTERACTIVE STEPPED FORM + LIVE PREVIEW */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          
+
           {/* LEFT: STEPPED FORM CARD */}
           <div className="backdrop-blur-md bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-2xl p-6 lg:p-8 text-white relative">
-            
+
             {/* Progress indicators */}
             <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-800">
-              <button 
+              <button
                 onClick={() => setStep(0)}
                 className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5"
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Changing Style
               </button>
-              
+
               <div className="flex gap-1.5">
                 {[1, 2, 3, 4].map(idx => (
-                  <div 
+                  <div
                     key={idx}
-                    className={`h-1.5 w-8 rounded-full transition-all duration-300 ${
-                      idx <= step 
-                        ? selectedTemplate === "brand" ? "bg-amber-500" : selectedTemplate === "minimal" ? "bg-slate-300" : "bg-teal-400" 
-                        : "bg-slate-800"
-                    }`}
+                    className={`h-1.5 w-8 rounded-full transition-all duration-300 ${idx <= step
+                      ? selectedTemplate === "brand" ? "bg-amber-500" : selectedTemplate === "minimal" ? "bg-slate-300" : "bg-teal-400"
+                      : "bg-slate-800"
+                      }`}
                   />
                 ))}
               </div>
-              
+
               <span className="text-xs font-bold text-slate-500">Step {step} of 4</span>
             </div>
 
@@ -523,10 +522,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Full Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="name"
-                      value={formData.name} 
+                      value={formData.name}
                       onChange={handleInputChange}
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
@@ -534,10 +533,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Professional Role</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="role"
-                      value={formData.role} 
+                      value={formData.role}
                       onChange={handleInputChange}
                       placeholder="e.g. Senior Mortgage Specialist"
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
@@ -546,10 +545,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Company Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="company"
-                      value={formData.company} 
+                      value={formData.company}
                       onChange={handleInputChange}
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
@@ -561,9 +560,9 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       <div className="relative border border-dashed border-slate-800 hover:border-slate-700 bg-slate-950/40 rounded-lg p-3 flex flex-col items-center justify-center cursor-pointer transition-colors">
                         <Upload className="h-4 w-4 text-slate-500 mb-1" />
                         <span className="text-[10px] text-slate-400 font-semibold">Upload Logo</span>
-                        <input 
-                          type="file" 
-                          accept="image/*" 
+                        <input
+                          type="file"
+                          accept="image/*"
                           onChange={(e) => handleImageUpload(e, "logo")}
                           className="absolute inset-0 opacity-0 cursor-pointer"
                         />
@@ -575,9 +574,9 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       <div className="relative border border-dashed border-slate-800 hover:border-slate-700 bg-slate-950/40 rounded-lg p-3 flex flex-col items-center justify-center cursor-pointer transition-colors">
                         <Upload className="h-4 w-4 text-slate-500 mb-1" />
                         <span className="text-[10px] text-slate-400 font-semibold">Upload Photo</span>
-                        <input 
-                          type="file" 
-                          accept="image/*" 
+                        <input
+                          type="file"
+                          accept="image/*"
                           onChange={(e) => handleImageUpload(e, "photo")}
                           className="absolute inset-0 opacity-0 cursor-pointer"
                         />
@@ -602,10 +601,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Hero Headline</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="headline"
-                      value={formData.headline} 
+                      value={formData.headline}
                       onChange={handleInputChange}
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
@@ -613,10 +612,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Biography Summary</label>
-                    <textarea 
+                    <textarea
                       name="bio"
                       rows={5}
-                      value={formData.bio} 
+                      value={formData.bio}
                       onChange={handleInputChange}
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none resize-none leading-relaxed"
                     />
@@ -638,20 +637,19 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
                 <div className="space-y-4">
                   {services.map((service, index) => (
-                    <div 
-                      key={service.id} 
-                      className={`border rounded-xl p-4 transition-colors ${
-                        service.checked ? "bg-slate-950/50 border-teal-500/40" : "bg-slate-950/10 border-slate-800"
-                      }`}
+                    <div
+                      key={service.id}
+                      className={`border rounded-xl p-4 transition-colors ${service.checked ? "bg-slate-950/50 border-teal-500/40" : "bg-slate-950/10 border-slate-800"
+                        }`}
                     >
                       <div className="flex items-start gap-3 mb-2.5">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={service.checked}
                           onChange={() => toggleService(service.id)}
                           className="h-4 w-4 rounded border-slate-800 bg-slate-950 text-teal-500 focus:ring-teal-500 mt-1 cursor-pointer"
                         />
-                        <input 
+                        <input
                           type="text"
                           value={service.title}
                           onChange={(e) => handleServiceChange(service.id, "title", e.target.value)}
@@ -659,8 +657,8 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                           disabled={!service.checked}
                         />
                       </div>
-                      
-                      <textarea 
+
+                      <textarea
                         value={service.description}
                         onChange={(e) => handleServiceChange(service.id, "description", e.target.value)}
                         rows={2}
@@ -687,10 +685,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Phone Number</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="phone"
-                      value={formData.phone} 
+                      value={formData.phone}
                       onChange={handleInputChange}
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
@@ -698,10 +696,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">WhatsApp Link / Number</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="whatsapp"
-                      value={formData.whatsapp} 
+                      value={formData.whatsapp}
                       onChange={handleInputChange}
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
@@ -709,10 +707,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Email Address</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       name="email"
-                      value={formData.email} 
+                      value={formData.email}
                       onChange={handleInputChange}
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
@@ -723,28 +721,26 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
             {/* Back / Next buttons */}
             <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-800">
-              <button 
+              <button
                 onClick={() => setStep(prev => prev - 1)}
                 className="btn border border-slate-800 text-xs hover:bg-slate-850 px-4 py-2"
               >
                 Back
               </button>
-              
+
               {step < 4 ? (
-                <button 
+                <button
                   onClick={() => setStep(prev => prev + 1)}
-                  className={`btn flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-lg ${
-                    selectedTemplate === "brand" ? "bg-amber-500 text-slate-950 hover:bg-amber-400 font-extrabold" : selectedTemplate === "minimal" ? "bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold" : "bg-teal-500 text-slate-950 hover:bg-teal-400 font-extrabold"
-                  }`}
+                  className={`btn flex items-center gap-1.5 text-xs px-5 py-2.5 rounded-lg ${selectedTemplate === "brand" ? "bg-amber-500 text-slate-950 hover:bg-amber-400 font-extrabold" : selectedTemplate === "minimal" ? "bg-slate-100 text-slate-900 hover:bg-slate-200 font-bold" : "bg-teal-500 text-slate-950 hover:bg-teal-400 font-extrabold"
+                    }`}
                 >
                   Continue <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <button 
+                <button
                   onClick={triggerHugoBuild}
-                  className={`btn flex items-center gap-1.5 text-xs px-6 py-3 rounded-lg font-extrabold animate-pulse ${
-                    selectedTemplate === "brand" ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20" : selectedTemplate === "minimal" ? "bg-slate-100 text-slate-900 hover:bg-slate-200" : "bg-teal-500 text-slate-950 hover:bg-teal-400 shadow-lg shadow-teal-500/20"
-                  }`}
+                  className={`btn flex items-center gap-1.5 text-xs px-6 py-3 rounded-lg font-extrabold animate-pulse ${selectedTemplate === "brand" ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20" : selectedTemplate === "minimal" ? "bg-slate-100 text-slate-900 hover:bg-slate-200" : "bg-teal-500 text-slate-950 hover:bg-teal-400 shadow-lg shadow-teal-500/20"
+                    }`}
                 >
                   Generate Site <Sparkles className="h-4 w-4" />
                 </button>
@@ -762,14 +758,14 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                 Real-Time Live Canvas
               </span>
               <div className="flex gap-1">
-                <button 
+                <button
                   onClick={() => setPreviewMode("desktop")}
                   className={`p-1.5 rounded-md transition-colors ${previewMode === "desktop" ? "bg-slate-800 text-white" : "text-slate-500 hover:text-slate-350"}`}
                   title="Desktop View"
                 >
                   <Laptop className="h-4 w-4" />
                 </button>
-                <button 
+                <button
                   onClick={() => setPreviewMode("mobile")}
                   className={`p-1.5 rounded-md transition-colors ${previewMode === "mobile" ? "bg-slate-800 text-white" : "text-slate-500 hover:text-slate-350"}`}
                   title="Mobile View"
@@ -781,10 +777,9 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
             {/* Preview Viewport Frame */}
             <div className="flex justify-center transition-all duration-500 ease-out">
-              <div 
-                className={`transition-all duration-500 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[520px] ${
-                  previewMode === "desktop" ? "w-full" : "w-[320px]"
-                }`}
+              <div
+                className={`transition-all duration-500 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[520px] ${previewMode === "desktop" ? "w-full" : "w-[320px]"
+                  }`}
               >
                 {/* Mock Browser Header */}
                 <div className="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center gap-2 shrink-0">
@@ -794,13 +789,13 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                     <span className="h-2 w-2 rounded-full bg-green-500/80"></span>
                   </div>
                   <div className="bg-slate-950 border border-slate-800 rounded-md py-0.5 px-3 flex-1 text-center text-[10px] text-slate-500 truncate select-none">
-                    {formData.name.toLowerCase().replace(/\s+/g, "") || "agent"}.leadhub.com
+                    {process.env.NEXT_PUBLIC_APP_HOST}/agent/{agent.website_slug || agent.slug || "specialist"}
                   </div>
                 </div>
 
                 {/* Simulated Webpage Body */}
                 <div className={`flex-1 overflow-y-auto ${previewStyles.wrapper}`}>
-                  
+
                   {/* Navbar */}
                   <div className={previewStyles.nav}>
                     <div className={previewStyles.logo}>
@@ -828,14 +823,14 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       <p className={previewStyles.heroSubtitle}>
                         Provided by {formData.name || "Agent Specialist"} at {formData.company || "LeadHub Financial"}.
                       </p>
-                      
+
                       {selectedTemplate === "brand" && photoPreview && (
                         <div className="mt-5 flex justify-center">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={photoPreview} alt="Portrait" className="h-20 w-20 rounded-full object-cover border-2 border-amber-500 shadow-md" />
                         </div>
                       )}
-                      
+
                       <span className={previewStyles.btn}>Get Started</span>
                     </div>
                   </div>
@@ -847,7 +842,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                         <h2 className={previewStyles.secTitle}>About Me</h2>
                         <p className="text-xs leading-relaxed opacity-80">{formData.bio}</p>
                       </div>
-                      
+
                       {selectedTemplate !== "brand" && photoPreview && (
                         <div className="shrink-0 mx-auto">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -901,7 +896,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
       {(isGenerating || buildSuccess || errorMessage) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
           <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 lg:p-8 text-white">
-            
+
             {/* BUILD SUCCESS CONTAINER */}
             {buildSuccess ? (
               <div className="text-center space-y-6">
@@ -922,9 +917,9 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       {compiledUrl.replace(/^https?:\/\//, "")}
                     </p>
                   </div>
-                  <a 
-                    href={compiledUrl} 
-                    target="_blank" 
+                  <a
+                    href={compiledUrl}
+                    target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1 px-4 py-2 bg-teal-500 text-slate-950 font-bold text-xs rounded-lg hover:bg-teal-400 shrink-0"
                   >
@@ -933,7 +928,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                 </div>
 
                 <div className="pt-4 flex justify-center">
-                  <button 
+                  <button
                     onClick={() => {
                       setBuildSuccess(false);
                       setStep(0);
@@ -973,7 +968,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       {errorMessage}
                     </p>
                     <div className="flex justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => {
                           setIsGenerating(false);
                           setErrorMessage("");
@@ -982,7 +977,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       >
                         Modify Details
                       </button>
-                      <button 
+                      <button
                         onClick={triggerHugoBuild}
                         className="btn bg-teal-500 text-slate-950 font-bold text-xs px-5 py-2.5 hover:bg-teal-400"
                       >
@@ -1004,3 +999,5 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
     </div>
   );
 }
+
+
