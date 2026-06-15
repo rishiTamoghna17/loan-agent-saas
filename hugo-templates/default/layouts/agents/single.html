@@ -1,0 +1,130 @@
+{{ partial "header.html" . }}
+
+<main id="home">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>Custom Mortgage Solutions by <br><span>{{ .Params.name }}</span></h1>
+      {{ if .Params.role }}
+        <p class="hero-role" style="font-size: 1.25rem; font-weight: 600; color: var(--primary); margin-top: -0.5rem; margin-bottom: 1.5rem;">
+          {{ .Params.role }} {{ if .Params.company }}at {{ .Params.company }}{{ end }}
+        </p>
+      {{ end }}
+      <p class="hero-subtitle">Simplifying your home buying journey with transparent rates, personalized terms, and expert advice tailored to your financial goals.</p>
+      <div class="hero-buttons">
+        <a href="#contact" class="btn btn-primary">Apply Now</a>
+        <a href="#services" class="btn btn-secondary">Explore Services</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Biography / Profile Section -->
+  <section id="about" class="section">
+    <div class="container">
+      <h2 class="section-title">Why Work With <span>Me</span></h2>
+      <div class="about-grid">
+        <div class="about-content">
+          <p>{{ .Content }}</p>
+          <p>Whether you're buying your first home, upgrading to a new one, or looking to refinance your existing loan, I am here to guide you through every step of the mortgage process. Let's make your homeownership dreams a reality.</p>
+          <a href="#contact" class="btn btn-secondary" style="margin-top: 1rem;">Contact Me</a>
+        </div>
+        
+        <div class="about-card">
+          {{ if .Params.photo }}
+            <div class="profile-photo-container" style="text-align: center; margin-bottom: 1.5rem;">
+              <img src="{{ .Params.photo | safeURL }}" alt="{{ .Params.name }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #0d9488; display: inline-block;">
+            </div>
+          {{ end }}
+          <h3>Contact Specialist</h3>
+          <ul class="contact-info-list">
+            {{ if .Params.phone }}
+            <li class="contact-info-item">
+              <span class="label">Phone</span>
+              <span class="value">{{ .Params.phone }}</span>
+            </li>
+            {{ end }}
+            {{ if .Params.email }}
+            <li class="contact-info-item">
+              <span class="label">Email</span>
+              <span class="value">{{ .Params.email }}</span>
+            </li>
+            {{ end }}
+            {{ if .Params.company }}
+            <li class="contact-info-item">
+              <span class="label">Office</span>
+              <span class="value">{{ .Params.company }}</span>
+            </li>
+            {{ end }}
+            {{ if .Params.whatsapp }}
+            <li class="contact-info-item">
+              <span class="label">WhatsApp</span>
+              <span class="value">{{ .Params.whatsapp }}</span>
+            </li>
+            {{ end }}
+          </ul>
+          {{ if .Params.email }}
+            <a href="mailto:{{ .Params.email }}" class="btn btn-primary" style="margin-top: 2rem; width: 100%;">Email Me Directly</a>
+          {{ end }}
+          {{ if .Params.whatsapp }}
+            <a href="https://wa.me/{{ .Params.whatsapp }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="margin-top: 0.5rem; width: 100%; border-color: #25D366; color: #25D366; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.717-1.465L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436.002 9.858-4.419 9.86-9.86.002-2.636-1.02-5.115-2.88-6.978-1.859-1.863-4.335-2.887-6.972-2.889-5.442 0-9.863 4.42-9.866 9.861-.001 1.636.486 3.232 1.411 4.816l-.99 3.613 3.702-.971zm10.222-6.52c-.298-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.496.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.568-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+              Chat on WhatsApp
+            </a>
+          {{ end }}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Section -->
+  {{ if .Params.services }}
+  <section id="services" class="section">
+    <div class="container">
+      <h2 class="section-title">Specialized <span>Loan Services</span></h2>
+      <div class="services-grid">
+        {{ range .Params.services }}
+        <div class="service-card">
+          <div class="service-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
+          <h3>{{ .title }}</h3>
+          <p>{{ .description }}</p>
+        </div>
+        {{ end }}
+      </div>
+    </div>
+  </section>
+  {{ end }}
+
+  <!-- Contact/CTA Section -->
+  <section id="contact" class="section" style="background: radial-gradient(circle at bottom, rgba(13, 148, 136, 0.05) 0%, transparent 60%);">
+    <div class="container" style="max-width: 600px; text-align: center;">
+      <h2 class="section-title" style="margin-bottom: 1.5rem;">Let's Get <span>Started</span></h2>
+      <p style="color: var(--text-secondary); margin-bottom: 2.5rem;">
+        Ready to take the next step towards your mortgage goals? Leave your contact details below, and I will get back to you within 24 business hours to discuss your options.
+      </p>
+      
+      <form style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2.5rem; text-align: left; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);" onsubmit="event.preventDefault(); alert('Thank you! Your request has been received. I will be in touch shortly.'); this.reset();">
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.05em;">Full Name</label>
+          <input type="text" required style="width: 100%; padding: 0.8rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; transition: var(--transition);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'">
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.05em;">Email Address</label>
+          <input type="email" required style="width: 100%; padding: 0.8rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; transition: var(--transition);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'">
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.05em;">Phone Number</label>
+          <input type="tel" required style="width: 100%; padding: 0.8rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; transition: var(--transition);" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'">
+        </div>
+        <div style="margin-bottom: 2rem;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.05em;">Message / Requirements</label>
+          <textarea rows="4" required placeholder="I am looking to buy a new home / refinance my current mortgage..." style="width: 100%; padding: 0.8rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; transition: var(--transition); resize: vertical;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; border: none;">Submit Inquiry</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+{{ partial "footer.html" . }}

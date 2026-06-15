@@ -1,5 +1,14 @@
 baseURL = "/"
 languageCode = "en-us"
-title = "Loan Agent Portal"
+title = "LeadHub Agent Portal"
 # We put layout files directly in layouts/, so no separate theme is needed.
 disableKinds = ["taxonomy", "term"]
+
+[params]
+name = "LeadHub Agent Portal"
+bio = "Welcome to the LeadHub Agent Portal. Search or visit individual agent websites."
+
+[params.contact]
+phone = "+1 (555) 000-0000"
+email = "support@leadhub.com"
+address = "100 Pine St, San Francisco, CA 94111"

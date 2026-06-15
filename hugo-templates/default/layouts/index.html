@@ -27,7 +27,7 @@
         <div class="about-card">
           {{ if .Site.Home.Params.contact.photo }}
             <div class="profile-photo-container" style="text-align: center; margin-bottom: 1.5rem;">
-              <img src="{{ .Site.Home.Params.contact.photo }}" alt="{{ .Site.Home.Params.name }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #0d9488; display: inline-block;">
+              <img src="{{ .Site.Home.Params.contact.photo | safeURL }}" alt="{{ .Site.Home.Params.name }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #0d9488; display: inline-block;">
             </div>
           {{ end }}
           <h3>Contact Specialist</h3>
@@ -53,7 +53,11 @@
               {{ end }}
             {{ end }}
           </ul>
-          <a href="mailto:{{ (index .Site.Home.Params.contact "email") }}" class="btn btn-primary" style="margin-top: 2rem; width: 100%;">Email Me Directly</a>
+          {{ if .Site.Home.Params.contact }}
+            {{ if (index .Site.Home.Params.contact "email") }}
+              <a href="mailto:{{ (index .Site.Home.Params.contact "email") }}" class="btn btn-primary" style="margin-top: 2rem; width: 100%;">Email Me Directly</a>
+            {{ end }}
+          {{ end }}
         </div>
       </div>
     </div>

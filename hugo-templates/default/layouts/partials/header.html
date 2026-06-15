@@ -3,26 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ if .IsHome }}{{ .Site.Home.Params.name }} | Professional Mortgage & Loan Agent{{ else }}{{ .Title }} | {{ .Site.Home.Params.name }}{{ end }}</title>
-  <meta name="description" content="{{ if .IsHome }}Get in touch with {{ .Site.Home.Params.name }} to find the best mortgage rates, refinancing options, and personalized loan services.{{ else }}{{ .Summary }}{{ end }}">
+  <title>{{ if eq .Section "agents" }}{{ .Params.name }} | {{ .Params.role }}{{ if .Params.company }} at {{ .Params.company }}{{ end }}{{ else if .IsHome }}{{ .Site.Home.Params.name }} | Professional Mortgage & Loan Agent{{ else }}{{ .Title }} | {{ .Site.Home.Params.name }}{{ end }}</title>
+  <meta name="description" content="{{ if eq .Section "agents" }}Get in touch with {{ .Params.name }} ({{ .Params.role }} at {{ .Params.company }}) for personalized mortgage options, rates, and expert advice.{{ else if .IsHome }}Get in touch with {{ .Site.Home.Params.name }} to find the best mortgage rates, refinancing options, and personalized loan services.{{ else }}{{ .Summary }}{{ end }}">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
   <header>
     <div class="container navbar">
-      <a href="/" class="logo">
-        {{ if .Site.Home.Params.contact.logo }}
-          <img src="{{ .Site.Home.Params.contact.logo }}" alt="Logo" style="height: 32px; width: auto; object-fit: contain; vertical-align: middle;">
+      <a href="{{ if eq .Section "agents" }}#home{{ else }}/{{ end }}" class="logo">
+        {{ if eq .Section "agents" }}
+          {{ if .Params.logo }}
+            <img src="{{ .Params.logo | safeURL }}" alt="Logo" style="height: 32px; width: auto; object-fit: contain; vertical-align: middle;">
+          {{ else }}
+            {{ .Params.name }}
+          {{ end }}
         {{ else }}
-          {{ .Site.Home.Params.name }}
+          {{ if .Site.Home.Params.contact.logo }}
+            <img src="{{ .Site.Home.Params.contact.logo | safeURL }}" alt="Logo" style="height: 32px; width: auto; object-fit: contain; vertical-align: middle;">
+          {{ else }}
+            {{ .Site.Home.Params.name }}
+          {{ end }}
         {{ end }}
       </a>
       <nav>
         <ul class="nav-links">
-          <li><a href="/" class="{{ if .IsHome }}active{{ end }}">Home</a></li>
-          <li><a href="/about" class="{{ if eq .RelPermalink "/about/" }}active{{ end }}">About Me</a></li>
-          <li><a href="/services" class="{{ if eq .RelPermalink "/services/" }}active{{ end }}">Services</a></li>
-          <li><a href="#contact" class="nav-cta">Apply Now</a></li>
+          {{ if eq .Section "agents" }}
+            <li><a href="#home" class="active">Home</a></li>
+            <li><a href="#about">About Me</a></li>
+            {{ if .Params.services }}
+              <li><a href="#services">Services</a></li>
+            {{ end }}
+            <li><a href="#contact" class="nav-cta">Apply Now</a></li>
+          {{ else }}
+            <li><a href="/" class="{{ if .IsHome }}active{{ end }}">Home</a></li>
+            <li><a href="/about" class="{{ if eq .RelPermalink "/about/" }}active{{ end }}">About Me</a></li>
+            <li><a href="/services" class="{{ if eq .RelPermalink "/services/" }}active{{ end }}">Services</a></li>
+            <li><a href="#contact" class="nav-cta">Apply Now</a></li>
+          {{ end }}
         </ul>
       </nav>
     </div>
