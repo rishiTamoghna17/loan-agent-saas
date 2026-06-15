@@ -684,6 +684,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                   <div className={previewStyles.nav}>
                     <div className={previewStyles.logo}>
                       {logoPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={logoPreview} alt="Logo" className="h-6 object-contain" />
                       ) : (
                         formData.company || formData.name || "Specialist"
@@ -709,6 +710,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       
                       {selectedTemplate === "brand" && photoPreview && (
                         <div className="mt-5 flex justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={photoPreview} alt="Portrait" className="h-20 w-20 rounded-full object-cover border-2 border-amber-500 shadow-md" />
                         </div>
                       )}
@@ -727,6 +729,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       
                       {selectedTemplate !== "brand" && photoPreview && (
                         <div className="shrink-0 mx-auto">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={photoPreview} alt="Portrait" className="h-24 w-24 rounded-lg object-cover border border-slate-700" />
                         </div>
                       )}

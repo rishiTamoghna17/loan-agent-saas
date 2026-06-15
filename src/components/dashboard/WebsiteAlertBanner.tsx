@@ -106,7 +106,7 @@ export function WebsiteAlertBanner({ agentProfile }: WebsiteAlertBannerProps) {
                   Your Subdomain is Reserved!
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed max-w-2xl">
-                  Your professional subdomain is reserved at <span className="font-bold text-slate-800">{slug}.leadhub.com</span>. When you're ready to build your web presence, visit the 'Website Builder' tab below.
+                  Your professional subdomain is reserved at <span className="font-bold text-slate-800">{slug}.leadhub.com</span>. When you&apos;re ready to build your web presence, visit the &apos;Website Builder&apos; tab below.
                 </p>
               </div>
             </div>

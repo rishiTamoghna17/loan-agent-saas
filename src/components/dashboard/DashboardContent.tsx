@@ -336,6 +336,7 @@ export function DashboardContent({
         <div className="hidden md:flex mb-8 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             {agent.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={agent.logo_url} alt={agent.business_name} className="h-12 w-12 rounded-2xl border border-slate-200 object-cover shadow-sm" />
             ) : (
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-xl font-bold text-white shadow-sm">
@@ -378,6 +379,7 @@ export function DashboardContent({
           <div className="md:hidden mb-6">
             <div className="flex items-center gap-3">
               {agent.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={agent.logo_url} alt={agent.business_name} className="h-11 w-11 rounded-xl border border-slate-200 object-cover shadow-sm" />
               ) : (
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-lg font-bold text-white shadow-sm">
