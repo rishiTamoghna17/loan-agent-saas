@@ -38,6 +38,61 @@ interface WebsiteWizardClientProps {
   };
 }
 
+function compressAndResizeImage(file: File, maxDimension = 600, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("File is not an image"));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const mimeType = file.type === "image/gif" ? "image/gif" : "image/webp";
+        if (mimeType === "image/gif") {
+          resolve(canvas.toDataURL("image/png"));
+        } else {
+          resolve(canvas.toDataURL("image/webp", quality));
+        }
+      };
+      img.onerror = () => {
+        reject(new Error("Failed to load image"));
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      reject(new Error("Failed to read file"));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
   // Wizard steps: 0 (Template select), 1 (Identity), 2 (Messaging), 3 (Services), 4 (Contact)
   const [step, setStep] = useState(0);
@@ -108,19 +163,31 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handler for image uploads (reads as DataURL so it shows up locally in the preview)
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "logo" | "photo") => {
+  // Handler for image uploads (compresses, resizes, and converts to base64 DataURL)
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "logo" | "photo") => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        // Limit logo to max 300px width/height and photo to max 500px width/height
+        const maxDim = type === "logo" ? 300 : 500;
+        const compressedBase64 = await compressAndResizeImage(file, maxDim, 0.8);
         if (type === "logo") {
-          setLogoPreview(reader.result as string);
+          setLogoPreview(compressedBase64);
         } else {
-          setPhotoPreview(reader.result as string);
+          setPhotoPreview(compressedBase64);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Failed to compress image, using fallback reader:", err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (type === "logo") {
+            setLogoPreview(reader.result as string);
+          } else {
+            setPhotoPreview(reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -181,7 +248,13 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
         })
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error(`Server returned non-JSON response (HTTP ${response.status}): ${responseText.slice(0, 100)}...`);
+      }
 
       if (!response.ok) {
         throw new Error(result.details || result.error || "Compilation failed.");
