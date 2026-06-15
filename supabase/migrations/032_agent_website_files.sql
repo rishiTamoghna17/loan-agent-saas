@@ -18,6 +18,7 @@ ON public.agent_website_files(agent_id, file_path);
 ALTER TABLE public.agent_website_files ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to website files so anyone can view the websites
+DROP POLICY IF EXISTS "Allow public read access to agent website files" ON public.agent_website_files;
 CREATE POLICY "Allow public read access to agent website files" 
 ON public.agent_website_files 
 FOR SELECT 

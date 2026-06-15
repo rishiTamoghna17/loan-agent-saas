@@ -28,13 +28,22 @@ interface ServiceItem {
 interface WebsiteWizardClientProps {
   agent: {
     id: string;
-    name: string;
+    name?: string;
+    agent_name?: string;
     business_name: string | null;
     bio?: string;
+    description?: string | null;
     phone?: string;
     whatsapp?: string;
+    whatsapp_number?: string;
     email?: string;
-    logo_url?: string;
+    logo_url?: string | null;
+    photo_url?: string | null;
+    role?: string | null;
+    website_slug?: string | null;
+    slug?: string | null;
+    chosen_theme?: string | null;
+    services?: any;
   };
 }
 
@@ -105,54 +114,72 @@ function compressAndResizeImage(
 export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
   // Wizard steps: 0 (Template select), 1 (Identity), 2 (Messaging), 3 (Services), 4 (Contact)
   const [step, setStep] = useState(0);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(agent.chosen_theme || "authority");
   
   // File upload states (as base64 data URLs)
-  const [logoPreview, setLogoPreview] = useState<string>("");
-  const [photoPreview, setPhotoPreview] = useState<string>("");
+  const [logoPreview, setLogoPreview] = useState<string>(agent.logo_url || "");
+  const [photoPreview, setPhotoPreview] = useState<string>(agent.photo_url || "");
   
   // Services state (editable descriptions)
-  const [services, setServices] = useState<ServiceItem[]>([
-    {
-      id: "srv-1",
-      title: "Conventional Mortgages",
-      description: "Traditional fixed and adjustable-rate home loans with flexible down payment options and terms.",
-      checked: true
-    },
-    {
-      id: "srv-2",
-      title: "FHA Purchase Loans",
-      description: "Federal Housing Administration loans designed for first-time buyers with lower credit or down payments.",
-      checked: true
-    },
-    {
-      id: "srv-3",
-      title: "Refinancing & Rate Reductions",
-      description: "Lower your monthly payments, reduce your interest rate, or cash out home equity.",
-      checked: true
-    },
-    {
-      id: "srv-4",
-      title: "VA Veteran Loans",
-      description: "Exclusive government-backed loans featuring zero down payment requirements for active duty and veterans.",
-      checked: false
-    },
-    {
-      id: "srv-5",
-      title: "Jumbo & High-Value Mortgages",
-      description: "Customized financing solutions for luxury home purchases that exceed standard loan limits.",
-      checked: false
+  const [services, setServices] = useState<ServiceItem[]>(() => {
+    const defaults = [
+      {
+        id: "srv-1",
+        title: "Conventional Mortgages",
+        description: "Traditional fixed and adjustable-rate home loans with flexible down payment options and terms.",
+        checked: true
+      },
+      {
+        id: "srv-2",
+        title: "FHA Purchase Loans",
+        description: "Federal Housing Administration loans designed for first-time buyers with lower credit or down payments.",
+        checked: true
+      },
+      {
+        id: "srv-3",
+        title: "Refinancing & Rate Reductions",
+        description: "Lower your monthly payments, reduce your interest rate, or cash out home equity.",
+        checked: true
+      },
+      {
+        id: "srv-4",
+        title: "VA Veteran Loans",
+        description: "Exclusive government-backed loans featuring zero down payment requirements for active duty and veterans.",
+        checked: false
+      },
+      {
+        id: "srv-5",
+        title: "Jumbo & High-Value Mortgages",
+        description: "Customized financing solutions for luxury home purchases that exceed standard loan limits.",
+        checked: false
+      }
+    ];
+
+    if (agent.services && Array.isArray(agent.services)) {
+      return defaults.map(def => {
+        const matching = (agent.services as any[]).find((s: any) => s.title === def.title);
+        if (matching) {
+          return {
+            ...def,
+            description: matching.description || def.description,
+            checked: true
+          };
+        }
+        return { ...def, checked: false };
+      });
     }
-  ]);
+    return defaults;
+  });
 
   // Main Form fields
   const [formData, setFormData] = useState({
-    name: agent.name || "",
+    name: agent.agent_name || agent.name || "",
+    role: agent.role || "Senior Mortgage Consultant",
     company: agent.business_name || "",
     headline: "Custom Mortgage Solutions Scoped For Your Goals",
-    bio: agent.bio || "Marcus is dedicated to helping families navigate the home purchase process. With deep local ties and over 15 years of industry experience, he coordinates personalized terms and loans.",
+    bio: agent.description || agent.bio || "Marcus is dedicated to helping families navigate the home purchase process. With deep local ties and over 15 years of industry experience, he coordinates personalized terms and loans.",
     phone: agent.phone || "",
-    whatsapp: agent.whatsapp || "",
+    whatsapp: agent.whatsapp_number || agent.whatsapp || "",
     email: agent.email || ""
   });
 
@@ -211,13 +238,12 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
     setServices(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
 
-  // Execute Hugo compilation API call
+  // Execute GitHub API website publishing workflow
   const triggerHugoBuild = async () => {
     setIsGenerating(true);
     setErrorMessage("");
-    setBuildLogs(["1. Setting up Hugo isolated workspace...", "2. Copying visual assets & layout config..."]);
+    setBuildLogs(["1. Saving profile details to database...", "2. Formatting YAML Front Matter structures..."]);
     
-    // Simulate compilation steps for visual magic before showing response
     const addLog = (log: string, delay: number) => {
       return new Promise<void>((resolve) => {
         setTimeout(() => {
@@ -227,34 +253,31 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
       });
     };
 
-    await addLog("3. Generating content pages (Front Matter)...", 800);
-    await addLog("4. Running Hugo CLI compiler engine...", 800);
+    await addLog("3. Generating clean static site markdown files...", 800);
+    await addLog("4. Pushing static files to repository (GitHub Contents API)...", 800);
 
     try {
       const selectedServices = services
         .filter(s => s.checked)
         .map(s => ({ title: s.title, description: s.description }));
 
-      const response = await fetch("/api/generate-site", {
+      const response = await fetch("/api/website/publish", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          agentId: agent.id,
-          agentData: {
-            name: formData.name,
-            bio: formData.bio,
-            contact: {
-              phone: formData.phone,
-              whatsapp: formData.whatsapp,
-              email: formData.email,
-              company: formData.company,
-              logo: logoPreview,
-              photo: photoPreview
-            },
-            services: selectedServices
-          }
+          name: formData.name,
+          role: formData.role,
+          company: formData.company,
+          phone: formData.phone,
+          email: formData.email,
+          whatsapp: formData.whatsapp,
+          logo: logoPreview,
+          photo: photoPreview,
+          chosen_theme: selectedTemplate,
+          bio: formData.bio,
+          services: selectedServices
         })
       });
 
@@ -267,19 +290,22 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
       }
 
       if (!response.ok) {
-        throw new Error(result.details || result.error || "Compilation failed.");
+        throw new Error(result.details || result.error || "Publishing failed.");
       }
 
-      await addLog("5. Site compiled and published successfully!", 500);
+      await addLog("5. Site content deployed to GitHub successfully!", 500);
       
-      // If we are running locally, let's provide a local URL they can open
-      const localUrl = `/public-sites/${agent.id}/index.html`;
-      setCompiledUrl(localUrl);
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const domain = isLocal 
+        ? `http://${result.website_slug}.localhost:${window.location.port || '3000'}` 
+        : `https://${result.website_slug}.leadhub.com`;
+      
+      setCompiledUrl(domain);
       setBuildSuccess(true);
     } catch (err: any) {
       console.error(err);
       setErrorMessage(err.message || "Something went wrong.");
-      setBuildLogs(prev => [...prev, `❌ Compilation Error: ${err.message || String(err)}`]);
+      setBuildLogs(prev => [...prev, `❌ Publishing Error: ${err.message || String(err)}`]);
     } finally {
       setIsGenerating(false);
     }
@@ -502,6 +528,18 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       name="name"
                       value={formData.name} 
                       onChange={handleInputChange}
+                      className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Professional Role</label>
+                    <input 
+                      type="text" 
+                      name="role"
+                      value={formData.role} 
+                      onChange={handleInputChange}
+                      placeholder="e.g. Senior Mortgage Specialist"
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
                   </div>
@@ -881,7 +919,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                   <div className="min-w-0 text-left">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Public Link</p>
                     <p className="text-xs font-semibold text-white truncate mt-0.5">
-                      https://sites.leadhub.com/{agent.id}
+                      {compiledUrl.replace(/^https?:\/\//, "")}
                     </p>
                   </div>
                   <a 
