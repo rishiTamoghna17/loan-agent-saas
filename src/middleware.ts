@@ -21,7 +21,8 @@ export async function middleware(request: NextRequest) {
     hostname === cleanAppHost || 
     hostname === `www.${cleanAppHost}` || 
     hostname === "localhost" || 
-    hostname === "127.0.0.1";
+    hostname === "127.0.0.1" ||
+    hostname.endsWith(".vercel.app");
 
   // A custom domain is any hostname that is not a primary domain and does not end with our primary domain/local domain suffixes
   const isCustomDomain = 
