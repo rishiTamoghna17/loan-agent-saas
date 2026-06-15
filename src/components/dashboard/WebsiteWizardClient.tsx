@@ -38,7 +38,12 @@ interface WebsiteWizardClientProps {
   };
 }
 
-function compressAndResizeImage(file: File, maxDimension = 600, quality = 0.75): Promise<string> {
+function compressAndResizeImage(
+  file: File,
+  maxDimension = 600,
+  quality = 0.75,
+  outputType?: "image/png" | "image/jpeg"
+): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
       reject(new Error("File is not an image"));
@@ -72,14 +77,18 @@ function compressAndResizeImage(file: File, maxDimension = 600, quality = 0.75):
           return;
         }
 
+        // Determine output mime type
+        const mimeType = outputType || (file.type === "image/png" || file.type === "image/gif" ? "image/png" : "image/jpeg");
+
+        // Fill background with white for JPEG to prevent black backgrounds on transparent PNGs/GIFs
+        if (mimeType === "image/jpeg") {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, width, height);
+        }
+
         ctx.drawImage(img, 0, 0, width, height);
         
-        const mimeType = file.type === "image/gif" ? "image/gif" : "image/webp";
-        if (mimeType === "image/gif") {
-          resolve(canvas.toDataURL("image/png"));
-        } else {
-          resolve(canvas.toDataURL("image/webp", quality));
-        }
+        resolve(canvas.toDataURL(mimeType, mimeType === "image/png" ? undefined : quality));
       };
       img.onerror = () => {
         reject(new Error("Failed to load image"));
@@ -168,9 +177,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        // Limit logo to max 300px width/height and photo to max 500px width/height
-        const maxDim = type === "logo" ? 300 : 500;
-        const compressedBase64 = await compressAndResizeImage(file, maxDim, 0.8);
+        // Limit logo to max 200px width/height and photo to max 400px width/height
+        const maxDim = type === "logo" ? 200 : 400;
+        const mimeType = type === "logo" ? "image/png" : "image/jpeg";
+        const compressedBase64 = await compressAndResizeImage(file, maxDim, 0.7, mimeType);
         if (type === "logo") {
           setLogoPreview(compressedBase64);
         } else {

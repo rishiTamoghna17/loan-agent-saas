@@ -25,6 +25,11 @@
         </div>
         
         <div class="about-card">
+          {{ if .Site.Home.Params.contact.photo }}
+            <div class="profile-photo-container" style="text-align: center; margin-bottom: 1.5rem;">
+              <img src="{{ .Site.Home.Params.contact.photo }}" alt="{{ .Site.Home.Params.name }}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #0d9488; display: inline-block;">
+            </div>
+          {{ end }}
           <h3>Contact Specialist</h3>
           <ul class="contact-info-list">
             {{ with .Site.Home.Params.contact }}

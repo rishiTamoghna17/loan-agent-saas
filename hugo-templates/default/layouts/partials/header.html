@@ -10,7 +10,13 @@
 <body>
   <header>
     <div class="container navbar">
-      <a href="/" class="logo">{{ .Site.Home.Params.name }}</a>
+      <a href="/" class="logo">
+        {{ if .Site.Home.Params.contact.logo }}
+          <img src="{{ .Site.Home.Params.contact.logo }}" alt="Logo" style="height: 32px; width: auto; object-fit: contain; vertical-align: middle;">
+        {{ else }}
+          {{ .Site.Home.Params.name }}
+        {{ end }}
+      </a>
       <nav>
         <ul class="nav-links">
           <li><a href="/" class="{{ if .IsHome }}active{{ end }}">Home</a></li>

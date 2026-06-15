@@ -87,6 +87,18 @@ export function stringifyYaml(obj: any, indent = 0): string {
  * @returns The public URL of the compiled agent site.
  */
 export async function generateAgentSite(agentId: string, agentData: AgentData): Promise<string> {
+  const binName = process.platform === "win32" ? "hugo.exe" : "hugo";
+  const hugoPath = path.join(process.cwd(), "node_modules", "hugo-bin", "vendor", binName);
+
+  // Ensure execution permissions on Unix-based systems
+  if (process.platform !== "win32") {
+    try {
+      fs.chmodSync(hugoPath, 0o755);
+    } catch (e) {
+      // Ignore errors in read-only environments
+    }
+  }
+
   // Define working directories inside /tmp (always writable, even in Vercel serverless environments)
   const tempDir = path.join("/tmp", "hugo-builds", agentId);
   const destDir = path.join("/tmp", "hugo-outputs", agentId);
@@ -178,8 +190,8 @@ ${servicesListMarkdown}
     fs.mkdirSync(destDir, { recursive: true });
 
     // 3. Execute Hugo
-    // Compile site from temp source folder into destination folder
-    const command = `hugo --source "${tempDir}" --destination "${destDir}"`;
+    // Compile site from temp source folder into destination folder using the absolute hugo-bin executable path
+    const command = `"${hugoPath}" --source "${tempDir}" --destination "${destDir}"`;
     await execPromise(command);
 
     // 4. Clean up existing files in the database for this agent

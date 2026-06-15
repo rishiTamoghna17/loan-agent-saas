@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Loan Agent Portal</title>
+		<link>/</link>
+		<description>Recent content on Loan Agent Portal</description>
+		<generator>Hugo</generator>
+		<language>en-us</language>
+		
+		
+		
+		
+			<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>About Me</title>
+				<link>/about/</link>
+				<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+				<guid>/about/</guid>
+				<description>Learn more about Marcus Vance 1aa22f7a and our custom mortgage offerings.</description>
+			</item>
+			<item>
+				<title>Services Offered</title>
+				<link>/services/</link>
+				<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+				<guid>/services/</guid>
+				<description>Explore the custom loan programs and mortgage services offered by Marcus Vance 1aa22f7a.</description>
+			</item>
+	</channel>
+</rss>
