@@ -1,24 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  useAgentDashboard, 
-  PersonaType, 
-  CampaignData, 
-  LeadData, 
-  LiveFeedEvent 
+import {
+  useAgentDashboard,
+  PersonaType,
+  CampaignData,
+  LeadData,
+  LiveFeedEvent
 } from "@/lib/hooks/useAgentDashboard";
-import { 
-  Users, 
-  Mail, 
-  MessageSquare, 
-  Award, 
-  ArrowUpRight, 
-  Phone, 
-  Clock, 
-  Sparkles, 
-  HelpCircle, 
-  Check, 
+import {
+  Users,
+  Mail,
+  MessageSquare,
+  Award,
+  ArrowUpRight,
+  Phone,
+  Clock,
+  Sparkles,
+  HelpCircle,
+  Check,
   Send,
   ExternalLink,
   Activity,
@@ -36,15 +36,15 @@ interface AgentDashboardProps {
 
 export function AgentDashboard({ agentId }: AgentDashboardProps) {
   const [selectedPersona, setSelectedPersona] = useState<PersonaType>("loans");
-  const { 
-    persona, 
-    setPersona, 
-    loading, 
-    metrics, 
-    campaigns, 
-    leads, 
-    liveFeed, 
-    simulateNewWebhookEvent 
+  const {
+    persona,
+    setPersona,
+    loading,
+    metrics,
+    campaigns,
+    leads,
+    liveFeed,
+    simulateNewWebhookEvent
   } = useAgentDashboard(agentId, selectedPersona);
 
   const [activeFollowUpLead, setActiveFollowUpLead] = useState<LeadData | null>(null);
@@ -100,12 +100,12 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
         </div>
 
         {/* Business Persona Toggle */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+        {/* <div className="flex flex-col gap-1.5"> */}
+        {/* <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
             <Briefcase className="h-3.5 w-3.5" /> Workspace Profile
-          </label>
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button 
+          </label> */}
+        {/* <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200"> */}
+        {/* <button 
               type="button"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
             >
@@ -113,9 +113,9 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Loans
-            </button>
+            </button> */}
 
-            {/* Comment out Retail and Marketing buttons for now
+        {/* Comment out Retail and Marketing buttons for now
             <button 
               type="button"
               disabled
@@ -132,8 +132,8 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
               Marketing
             </button>
             */}
-          </div>
-        </div>
+        {/* </div> */}
+        {/* </div> */}
       </div>
 
       {loading ? (
@@ -143,7 +143,7 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
         </div>
       ) : (
         <div className="space-y-8 animate-in fade-in-50 duration-300">
-          
+
           {/* Top Action Desk (Metrics Cards Grid) */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {metrics.map((metric, idx) => {
@@ -195,10 +195,10 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
 
           {/* Main Layout Split */}
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-10 items-start">
-            
+
             {/* LEFT PANEL (70% on large screens) */}
             <div className="space-y-8 lg:col-span-7 min-w-0">
-              
+
               {/* Campaigns Table */}
               <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
                 <div className="border-b border-slate-200/80 px-6 py-5 flex items-center justify-between bg-slate-50/50">
@@ -229,11 +229,10 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                             <span className="text-xs text-slate-400 block mt-0.5">{campaign.sentAt}</span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold ${
-                              campaign.channel === "email" 
-                                ? "bg-indigo-50 text-indigo-700" 
-                                : "bg-emerald-50 text-emerald-700"
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold ${campaign.channel === "email"
+                              ? "bg-indigo-50 text-indigo-700"
+                              : "bg-emerald-50 text-emerald-700"
+                              }`}>
                               {campaign.channel === "email" ? (
                                 <>
                                   <Mail className="h-3 w-3" /> Email
@@ -249,20 +248,18 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                             {campaign.audienceSize.toLocaleString()}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              campaign.status === "sent" 
-                                ? "bg-emerald-50 text-emerald-700" 
-                                : campaign.status === "sending" 
-                                  ? "bg-amber-50 text-amber-700" 
-                                  : "bg-rose-50 text-rose-700"
-                            }`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${
-                                campaign.status === "sent" 
-                                  ? "bg-emerald-500" 
-                                  : campaign.status === "sending" 
-                                    ? "bg-amber-500 animate-pulse" 
-                                    : "bg-rose-500"
-                              }`} />
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${campaign.status === "sent"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : campaign.status === "sending"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-rose-50 text-rose-700"
+                              }`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${campaign.status === "sent"
+                                ? "bg-emerald-500"
+                                : campaign.status === "sending"
+                                  ? "bg-amber-500 animate-pulse"
+                                  : "bg-rose-500"
+                                }`} />
                               {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
                             </span>
                           </td>
@@ -272,9 +269,9 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                                 {campaign.channel === "email" ? `Open: ${campaign.openRate}%` : `Read: ${campaign.openRate}%`}
                               </span>
                               <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                <div 
-                                  className="bg-brand-blue h-1.5 rounded-full" 
-                                  style={{ width: `${campaign.openRate}%` }} 
+                                <div
+                                  className="bg-brand-blue h-1.5 rounded-full"
+                                  style={{ width: `${campaign.openRate}%` }}
                                 />
                               </div>
                               <span className="text-[10px] text-slate-500">
@@ -306,13 +303,12 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2.5">
                           <h3 className="font-bold text-slate-900">{lead.name}</h3>
-                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-                            lead.status === "new" 
-                              ? "bg-sky-50 text-sky-700 ring-sky-700/10" 
-                              : lead.status === "in_progress" 
-                                ? "bg-amber-50 text-amber-700 ring-amber-700/10" 
-                                : "bg-emerald-50 text-emerald-700 ring-emerald-700/10"
-                          }`}>
+                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${lead.status === "new"
+                            ? "bg-sky-50 text-sky-700 ring-sky-700/10"
+                            : lead.status === "in_progress"
+                              ? "bg-amber-50 text-amber-700 ring-amber-700/10"
+                              : "bg-emerald-50 text-emerald-700 ring-emerald-700/10"
+                            }`}>
                             {lead.status === "new" ? "New" : lead.status === "in_progress" ? "In Progress" : "Converted"}
                           </span>
                         </div>
@@ -335,7 +331,7 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                             {lead.lastContacted}
                           </p>
                         </div>
-                        
+
                         <button
                           onClick={() => setActiveFollowUpLead(lead)}
                           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300"
@@ -354,7 +350,7 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
             {/* RIGHT PANEL - Live Engagement Feed ("Hot List" timeline) (3% of columns) */}
             <div className="space-y-4 lg:col-span-3 lg:sticky lg:top-4">
               <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                
+
                 {/* Header feed */}
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
                   <div className="flex items-center gap-2">
@@ -364,7 +360,7 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                     </div>
                     <h3 className="font-extrabold text-slate-950 text-base">Live Activity</h3>
                   </div>
-                  
+
                   {/* Simulate Webhook Trigger */}
                   <button
                     onClick={simulateNewWebhookEvent}
@@ -392,9 +388,8 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                             ) : null}
                             <div className="relative flex space-x-3 items-start">
                               <div>
-                                <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                                  isEmail ? "bg-indigo-50 text-indigo-600" : "bg-emerald-50 text-emerald-600"
-                                }`}>
+                                <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${isEmail ? "bg-indigo-50 text-indigo-600" : "bg-emerald-50 text-emerald-600"
+                                  }`}>
                                   {isEmail ? (
                                     <Mail className="h-4 w-4" />
                                   ) : (
@@ -414,7 +409,7 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                                     <Clock className="h-3 w-3" />
                                     {event.timeAgo}
                                   </span>
-                                  
+
                                   {/* Follow Up CTA */}
                                   <button
                                     onClick={() => handleFollowUpAction(event.leadName)}
@@ -449,7 +444,7 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
       {activeFollowUpLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in-50 duration-200">
           <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 relative animate-in zoom-in-95 duration-200">
-            <button 
+            <button
               onClick={() => setActiveFollowUpLead(null)}
               className="absolute right-4 top-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
             >
@@ -460,7 +455,7 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
               <Sparkles className="h-5 w-5 text-brand-blue" />
               Agent Action Desk
             </h3>
-            
+
             <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Lead Profile</p>
               <h4 className="text-base font-extrabold text-slate-950 mt-1">{activeFollowUpLead.name}</h4>
