@@ -296,9 +296,10 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
       await addLog("5. Site content deployed to GitHub successfully!", 500);
 
       const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const portSuffix = isLocal && window.location.port ? `:${window.location.port}` : "";
       const domain = isLocal
-        ? `http://${result.website_slug}.localhost:${window.location.port || '3000'}`
-        : `${process.env.NEXT_PUBLIC_APP_HOST}`;
+        ? `http://${window.location.hostname}${portSuffix}/agent/${result.website_slug}`
+        : `${process.env.NEXT_PUBLIC_APP_HOST}/agent/${result.website_slug}`;
 
       setCompiledUrl(domain);
       setBuildSuccess(true);
