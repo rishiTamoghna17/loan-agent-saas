@@ -18,6 +18,8 @@
     </div>
   </section>
 
+  {{ partial "calculator.html" . }}
+
   <!-- Biography / Profile Section -->
   <section id="about" class="section">
     <div class="container">
@@ -119,7 +121,7 @@
         </div>
         <div style="margin-bottom: 2rem;">
           <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.05em;">Message / Requirements</label>
-          <textarea rows="4" required placeholder="I am looking to buy a new home / refinance my current mortgage..." style="width: 100%; padding: 0.8rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; transition: var(--transition); resize: vertical;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'"></textarea>
+          <textarea id="lead-message" rows="4" required placeholder="I am looking to buy a new home / refinance my current mortgage..." style="width: 100%; padding: 0.8rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; outline: none; transition: var(--transition); resize: vertical;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'"></textarea>
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; border: none;">Submit Inquiry</button>
       </form>

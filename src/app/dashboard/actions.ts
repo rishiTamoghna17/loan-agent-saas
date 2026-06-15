@@ -229,8 +229,27 @@ export async function updateNotificationPreferences(formData: FormData) {
 export async function updateProfile(formData: FormData) {
   const logoFile = formData.get("logo_file");
   const services = formData.getAll("services_offered").map(String);
+  const businessName = String(formData.get("business_name") || "").trim();
+
+  // Auto-generate URL safe slug from business name
+  const slugify = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  let generatedSlug = slugify(businessName);
+  if (generatedSlug.length < 3) {
+    generatedSlug = (generatedSlug + "-slug").slice(0, 80);
+  }
+  if (generatedSlug.length < 3) {
+    generatedSlug = "agent";
+  }
+
   const parsed = profileSchema.safeParse({
-    business_name: formData.get("business_name"),
+    business_name: businessName,
     agent_name: formData.get("agent_name"),
     phone: formData.get("phone"),
     whatsapp_number: formData.get("whatsapp_number"),
@@ -241,14 +260,14 @@ export async function updateProfile(formData: FormData) {
     pincode: formData.get("pincode"),
     landmark: formData.get("landmark"),
     logo_url: formData.get("logo_url"),
-    slug: formData.get("slug"),
+    slug: generatedSlug,
     description: formData.get("description"),
     services_offered: services,
-    primary_color: formData.get("primary_color") || "#1769ff",
-    hero_title: formData.get("hero_title"),
-    hero_subtitle: formData.get("hero_subtitle"),
-    banner_image_url: formData.get("banner_image_url"),
-    custom_domain: formData.get("custom_domain")
+    primary_color: "#1769ff",
+    hero_title: "",
+    hero_subtitle: "",
+    banner_image_url: "",
+    custom_domain: ""
   });
 
   if (!parsed.success) return;
@@ -264,19 +283,20 @@ export async function updateProfile(formData: FormData) {
   const { error } = await supabase
     .from("agents")
     .update({
-      ...parsed.data,
+      business_name: parsed.data.business_name,
+      agent_name: parsed.data.agent_name,
+      phone: parsed.data.phone,
+      whatsapp_number: parsed.data.whatsapp_number,
+      email: parsed.data.email,
+      city: parsed.data.city,
+      district: parsed.data.district,
+      state: parsed.data.state,
+      pincode: parsed.data.pincode,
       landmark: parsed.data.landmark || null,
       logo_url: logoUrl,
+      slug: parsed.data.slug,
       description: parsed.data.description || null,
-      hero_title: parsed.data.hero_title || null,
-      hero_subtitle: parsed.data.hero_subtitle || null,
-      banner_image_url: parsed.data.banner_image_url || null,
-      custom_domain: parsed.data.custom_domain || null,
-      domain_status: parsed.data.custom_domain
-        ? parsed.data.custom_domain !== agent.custom_domain
-          ? "pending"
-          : agent.domain_status
-        : "not_connected"
+      services_offered: parsed.data.services_offered
     })
     .eq("id", agent.id);
 
@@ -284,6 +304,9 @@ export async function updateProfile(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/profile");
+  if (agent.slug) {
+    revalidatePath(`/agent/${agent.slug}`);
+  }
   revalidatePath(`/agent/${parsed.data.slug}`);
 }
 

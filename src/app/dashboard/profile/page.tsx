@@ -43,33 +43,6 @@ export default async function ProfilePage() {
           />
           <Field label="Landmark (optional)" name="landmark" defaultValue={agent.landmark ?? ""} />
           <Field label="Logo URL (optional)" name="logo_url" defaultValue={agent.logo_url ?? ""} />
-          <Field label="Public slug" name="slug" defaultValue={agent.slug} />
-        </div>
-
-        <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h2 className="text-base font-semibold text-ink">Branding</h2>
-          <p className="mt-1 text-sm text-slate-600">Make your public page feel unique for your business.</p>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label>
-              <span className="label">Primary color</span>
-              <input
-                name="primary_color"
-                type="color"
-                className="h-11 w-full rounded-md border border-slate-300 bg-white p-1"
-                defaultValue={agent.primary_color ?? "#1769ff"}
-              />
-            </label>
-            <Field label="Banner image URL (optional)" name="banner_image_url" defaultValue={agent.banner_image_url ?? ""} />
-            <Field label="Hero title (optional)" name="hero_title" defaultValue={agent.hero_title ?? ""} />
-            <Field label="Hero subtitle (optional)" name="hero_subtitle" defaultValue={agent.hero_subtitle ?? ""} />
-            <label>
-              <span className="label">Custom domain (optional)</span>
-              <input name="custom_domain" className="field" placeholder="rahulloans.in" defaultValue={agent.custom_domain ?? ""} />
-              <span className="mt-1 block text-xs text-slate-500">
-                Status: {(agent.domain_status ?? "not_connected").replace("_", " ")}. Add this later for premium custom domains.
-              </span>
-            </label>
-          </div>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-[160px_1fr]">

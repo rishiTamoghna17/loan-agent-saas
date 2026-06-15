@@ -1,165 +1,264 @@
-<section id="calculator" class="section border-t border-slate-800 bg-slate-900/50" style="padding: 5rem 0;">
-  <div class="container" style="max-width: 1000px;">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2 class="section-title" style="margin-bottom: 1rem;">Financial <span>Calculators</span></h2>
-      <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto; font-size: 0.95rem;">
-        Plan your finances instantly. Calculate your monthly EMI payments or check your maximum loan eligibility.
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    corePlugins: {
+      preflight: false,
+    },
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            primary: '#0d9488',
+            hover: '#0f766e',
+            accent: '#f59e0b',
+          }
+        }
+      }
+    }
+  }
+</script>
+
+<section id="calculator" class="w-full py-20 border-t border-slate-800 bg-[#0b0f19]/85">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-extrabold text-white mb-4">
+        Financial <span class="text-brand-primary">Calculators</span>
+      </h2>
+      <p class="text-slate-400 max-w-xl mx-auto text-sm md:text-base">
+        Estimate your monthly EMI payments or check your maximum loan eligibility in seconds.
       </p>
     </div>
 
-    <!-- Tab Buttons -->
-    <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2.5rem;">
-      <button id="tab-emi" type="button" class="btn" style="background-color: var(--primary); color: #fff; font-size: 0.9rem; padding: 0.6rem 1.5rem; border-radius: 9999px; border: none;">
+    <!-- Dual Tab Buttons -->
+    <div class="flex justify-center gap-4 mb-8">
+      <button
+        id="tab-emi"
+        type="button"
+        class="px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 bg-brand-primary text-white border-0 shadow-lg shadow-brand-primary/20 cursor-pointer"
+      >
         EMI Calculator
       </button>
-      <button id="tab-eligibility" type="button" class="btn btn-secondary" style="font-size: 0.9rem; padding: 0.6rem 1.5rem; border-radius: 9999px;">
+      <button
+        id="tab-eligibility"
+        type="button"
+        class="px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 bg-transparent text-slate-400 border border-slate-800 hover:text-white hover:border-slate-700 cursor-pointer"
+      >
         Loan Eligibility
       </button>
     </div>
 
-    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 2.5rem; backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);">
+    <!-- Main Card -->
+    <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 backdrop-blur-md shadow-2xl">
       
-      <!-- EMI Calculator Layout -->
-      <div id="calculator-emi-box" style="display: block;">
-        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 3rem;">
-          <!-- Inputs -->
-          <div style="display: flex; flex-direction: column; gap: 2rem;">
+      <!-- EMI Calculator View -->
+      <div id="emi-calc-view" class="block">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          <!-- Inputs (7 cols) -->
+          <div class="lg:col-span-7 flex flex-col gap-6">
             <div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Loan Amount</label>
-                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="val-emi-amount">₹25,00,000</span>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Loan Amount</label>
+                <span id="label-emi-amount" class="text-lg font-extrabold text-brand-primary">₹25,00,000</span>
               </div>
-              <input type="range" id="input-emi-amount" min="100000" max="10000000" step="50000" value="2500000" style="width: 100%; accent-color: var(--primary);">
-              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
-                <span>₹1L</span>
-                <span>₹1Cr</span>
+              <input
+                type="range"
+                id="slide-emi-amount"
+                min="100000"
+                max="10000000"
+                step="50000"
+                value="2500000"
+                class="w-full accent-brand-primary h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                <span>₹1 Lakh</span>
+                <span>₹1 Crore</span>
               </div>
             </div>
 
             <div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Interest Rate (p.a.)</label>
-                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="val-emi-rate">8.5%</span>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Interest Rate (p.a.)</label>
+                <span id="label-emi-rate" class="text-lg font-extrabold text-brand-primary">8.5%</span>
               </div>
-              <input type="range" id="input-emi-rate" min="5" max="20" step="0.1" value="8.5" style="width: 100%; accent-color: var(--primary);">
-              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <input
+                type="range"
+                id="slide-emi-rate"
+                min="5"
+                max="20"
+                step="0.1"
+                value="8.5"
+                class="w-full accent-brand-primary h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
                 <span>5%</span>
                 <span>20%</span>
               </div>
             </div>
 
             <div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Tenure (Years)</label>
-                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="val-emi-tenure">20 Years</span>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Tenure (Years)</label>
+                <span id="label-emi-tenure" class="text-lg font-extrabold text-brand-primary">20 Years</span>
               </div>
-              <input type="range" id="input-emi-tenure" min="1" max="30" step="1" value="20" style="width: 100%; accent-color: var(--primary);">
-              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <input
+                type="range"
+                id="slide-emi-tenure"
+                min="1"
+                max="30"
+                step="1"
+                value="20"
+                class="w-full accent-brand-primary h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
                 <span>1 Year</span>
                 <span>30 Years</span>
               </div>
             </div>
           </div>
 
-          <!-- Results -->
-          <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; display: flex; flex-direction: column; justify-content: center; text-align: center;">
-            <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Monthly EMI</p>
-            <h3 id="result-emi-monthly" style="font-size: 2.25rem; font-weight: 800; color: #fff; margin-bottom: 1.5rem;">₹21,697</h3>
-            
-            <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem; text-align: left; font-size: 0.85rem;">
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: var(--text-muted);">Principal Amount:</span>
-                <span id="result-emi-principal" style="color: #fff; font-weight: 600;">₹25,00,000</span>
-              </div>
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: var(--text-muted);">Total Interest:</span>
-                <span id="result-emi-interest" style="color: #fff; font-weight: 600;">₹27,07,249</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem;">
-                <span style="color: var(--text-muted); font-weight: 600;">Total Payable:</span>
-                <span id="result-emi-total" style="color: var(--accent); font-weight: 700;">₹52,07,249</span>
+          <!-- Results (5 cols) -->
+          <div class="lg:col-span-5 bg-black/30 border border-slate-800 rounded-xl p-6 flex flex-col justify-between text-center">
+            <div>
+              <p class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-1">Monthly EMI</p>
+              <h3 id="emi-monthly-result" class="text-3xl md:text-4xl font-black text-white tracking-tight mb-6">₹21,697</h3>
+              
+              <div class="border-t border-slate-800/80 pt-4 flex flex-col gap-3 text-left text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Principal Amount:</span>
+                  <span id="emi-principal-result" class="text-white font-semibold">₹25,00,000</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Total Interest:</span>
+                  <span id="emi-interest-result" class="text-white font-semibold">₹27,07,249</span>
+                </div>
+                <div class="flex justify-between border-t border-slate-800/40 pt-3 font-semibold">
+                  <span class="text-slate-400">Total Payable:</span>
+                  <span id="emi-total-result" class="text-brand-accent font-bold">₹52,07,249</span>
+                </div>
               </div>
             </div>
-            
-            <button type="button" id="btn-preapprove-emi" class="btn btn-primary" style="margin-top: 2rem; width: 100%; border: none;">
-              Get Pre-Approved Now
+
+            <button
+              type="button"
+              id="emi-preapply-btn"
+              class="w-full mt-6 py-3 bg-brand-primary hover:bg-brand-hover text-white font-bold text-sm rounded-lg border-0 shadow-lg shadow-brand-primary/20 transition-all cursor-pointer"
+            >
+              Pre-Apply with these Numbers
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Eligibility Calculator Layout -->
-      <div id="calculator-eligibility-box" style="display: none;">
-        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 3rem;">
-          <!-- Inputs -->
-          <div style="display: flex; flex-direction: column; gap: 2rem;">
+      <!-- Eligibility Calculator View -->
+      <div id="eligibility-calc-view" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          <!-- Inputs (7 cols) -->
+          <div class="lg:col-span-7 flex flex-col gap-6">
             <div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Net Monthly Income</label>
-                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="val-el-income">₹75,000</span>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Net Monthly Income</label>
+                <span id="label-el-income" class="text-lg font-extrabold text-brand-primary">₹75,000</span>
               </div>
-              <input type="range" id="input-el-income" min="15000" max="500000" step="5000" value="75000" style="width: 100%; accent-color: var(--primary);">
-              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
-                <span>₹15k</span>
-                <span>₹5L</span>
+              <input
+                type="range"
+                id="slide-el-income"
+                min="15000"
+                max="500000"
+                step="5000"
+                value="75000"
+                class="w-full accent-brand-primary h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                <span>₹15,000</span>
+                <span>₹5 Lakhs</span>
               </div>
             </div>
 
             <div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Existing Monthly EMI</label>
-                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="val-el-obligations">₹10,000</span>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Existing Monthly EMIs</label>
+                <span id="label-el-obligations" class="text-lg font-extrabold text-brand-primary">₹10,000</span>
               </div>
-              <input type="range" id="input-el-obligations" min="0" max="250000" step="2000" value="10000" style="width: 100%; accent-color: var(--primary);">
-              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <input
+                type="range"
+                id="slide-el-obligations"
+                min="0"
+                max="250000"
+                step="2000"
+                value="10000"
+                class="w-full accent-brand-primary h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
                 <span>₹0</span>
-                <span>₹2.5L</span>
+                <span>₹2.5 Lakhs</span>
               </div>
             </div>
 
             <div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Interest Rate (p.a.)</label>
-                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="val-el-rate">8.5%</span>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Interest Rate (p.a.)</label>
+                <span id="label-el-rate" class="text-lg font-extrabold text-brand-primary">8.5%</span>
               </div>
-              <input type="range" id="input-el-rate" min="5" max="20" step="0.1" value="8.5" style="width: 100%; accent-color: var(--primary);">
-              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <input
+                type="range"
+                id="slide-el-rate"
+                min="5"
+                max="20"
+                step="0.1"
+                value="8.5"
+                class="w-full accent-brand-primary h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
                 <span>5%</span>
                 <span>20%</span>
               </div>
             </div>
 
             <div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Tenure (Years)</label>
-                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary);" id="val-el-tenure">20 Years</span>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Tenure (Years)</label>
+                <span id="label-el-tenure" class="text-lg font-extrabold text-brand-primary">20 Years</span>
               </div>
-              <input type="range" id="input-el-tenure" min="1" max="30" step="1" value="20" style="width: 100%; accent-color: var(--primary);">
-              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <input
+                type="range"
+                id="slide-el-tenure"
+                min="1"
+                max="30"
+                step="1"
+                value="20"
+                class="w-full accent-brand-primary h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500 mt-1">
                 <span>1 Year</span>
                 <span>30 Years</span>
               </div>
             </div>
           </div>
 
-          <!-- Results -->
-          <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; display: flex; flex-direction: column; justify-content: center; text-align: center;">
-            <p style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Eligible Loan Amount</p>
-            <h3 id="result-el-amount" style="font-size: 2.25rem; font-weight: 800; color: var(--accent); margin-bottom: 1.5rem;">₹31,67,242</h3>
-            
-            <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem; text-align: left; font-size: 0.85rem;">
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: var(--text-muted);">Max Monthly EMI:</span>
-                <span id="result-el-emi" style="color: #fff; font-weight: 600;">₹27,500</span>
-              </div>
-              <div style="display: flex; justify-content: space-between;">
-                <span style="color: var(--text-muted);">Tenure Selected:</span>
-                <span id="result-el-tenure-val" style="color: #fff; font-weight: 600;">20 Years</span>
+          <!-- Results (5 cols) -->
+          <div class="lg:col-span-5 bg-black/30 border border-slate-800 rounded-xl p-6 flex flex-col justify-between text-center">
+            <div>
+              <p class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-1">Eligible Loan Amount</p>
+              <h3 id="el-amount-result" class="text-3xl md:text-4xl font-black text-brand-accent tracking-tight mb-6">₹31,67,242</h3>
+              
+              <div class="border-t border-slate-800/80 pt-4 flex flex-col gap-3 text-left text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Max Monthly EMI:</span>
+                  <span id="el-emi-result" class="text-white font-semibold">₹27,500</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Tenure Selected:</span>
+                  <span id="el-tenure-result" class="text-white font-semibold">20 Years</span>
+                </div>
               </div>
             </div>
-            
-            <button type="button" id="btn-preapprove-el" class="btn btn-primary" style="margin-top: 2rem; width: 100%; border: none;">
-              Get Pre-Approved Now
+
+            <button
+              type="button"
+              id="el-preapply-btn"
+              class="w-full mt-6 py-3 bg-brand-primary hover:bg-brand-hover text-white font-bold text-sm rounded-lg border-0 shadow-lg shadow-brand-primary/20 transition-all cursor-pointer"
+            >
+              Pre-Apply with these Numbers
             </button>
           </div>
         </div>
@@ -171,168 +270,152 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  // Tabs Toggle
   const tabEmi = document.getElementById("tab-emi");
   const tabEl = document.getElementById("tab-eligibility");
-  const emiBox = document.getElementById("calculator-emi-box");
-  const elBox = document.getElementById("calculator-eligibility-box");
+  const emiView = document.getElementById("emi-calc-view");
+  const elView = document.getElementById("eligibility-calc-view");
 
   tabEmi.addEventListener("click", function () {
-    tabEmi.style.backgroundColor = "var(--primary)";
-    tabEmi.style.color = "#fff";
-    tabEmi.classList.remove("btn-secondary");
-    tabEl.style.backgroundColor = "transparent";
-    tabEl.style.color = "var(--text-primary)";
-    tabEl.classList.add("btn-secondary");
-    emiBox.style.display = "block";
-    elBox.style.display = "none";
+    tabEmi.className = "px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 bg-brand-primary text-white border-0 shadow-lg shadow-brand-primary/20 cursor-pointer";
+    tabEl.className = "px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 bg-transparent text-slate-400 border border-slate-800 hover:text-white hover:border-slate-700 cursor-pointer";
+    emiView.classList.remove("hidden");
+    elView.classList.add("hidden");
   });
 
   tabEl.addEventListener("click", function () {
-    tabEl.style.backgroundColor = "var(--primary)";
-    tabEl.style.color = "#fff";
-    tabEl.classList.remove("btn-secondary");
-    tabEmi.style.backgroundColor = "transparent";
-    tabEmi.style.color = "var(--text-primary)";
-    tabEmi.classList.add("btn-secondary");
-    elBox.style.display = "block";
-    emiBox.style.display = "none";
+    tabEl.className = "px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 bg-brand-primary text-white border-0 shadow-lg shadow-brand-primary/20 cursor-pointer";
+    tabEmi.className = "px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 bg-transparent text-slate-400 border border-slate-800 hover:text-white hover:border-slate-700 cursor-pointer";
+    elView.classList.remove("hidden");
+    emiView.classList.add("hidden");
   });
 
-  // Helpers
   function formatCurrency(val) {
     return "₹" + Math.round(val).toLocaleString("en-IN");
   }
 
-  // EMI Logic
-  const inputEmiAmount = document.getElementById("input-emi-amount");
-  const inputEmiRate = document.getElementById("input-emi-rate");
-  const inputEmiTenure = document.getElementById("input-emi-tenure");
+  // EMI Calculator Inputs
+  const slideEmiAmount = document.getElementById("slide-emi-amount");
+  const slideEmiRate = document.getElementById("slide-emi-rate");
+  const slideEmiTenure = document.getElementById("slide-emi-tenure");
 
-  const valEmiAmount = document.getElementById("val-emi-amount");
-  const valEmiRate = document.getElementById("val-emi-rate");
-  const valEmiTenure = document.getElementById("val-emi-tenure");
+  // EMI Labels
+  const labelEmiAmount = document.getElementById("label-emi-amount");
+  const labelEmiRate = document.getElementById("label-emi-rate");
+  const labelEmiTenure = document.getElementById("label-emi-tenure");
 
-  const resultEmiMonthly = document.getElementById("result-emi-monthly");
-  const resultEmiPrincipal = document.getElementById("result-emi-principal");
-  const resultEmiInterest = document.getElementById("result-emi-interest");
-  const resultEmiTotal = document.getElementById("result-emi-total");
+  // EMI Results
+  const emiMonthlyResult = document.getElementById("emi-monthly-result");
+  const emiPrincipalResult = document.getElementById("emi-principal-result");
+  const emiInterestResult = document.getElementById("emi-interest-result");
+  const emiTotalResult = document.getElementById("emi-total-result");
 
-  function calculateEmi() {
-    const P = parseFloat(inputEmiAmount.value);
-    const R = parseFloat(inputEmiRate.value) / 12 / 100;
-    const N = parseFloat(inputEmiTenure.value) * 12;
+  function runEmiCalc() {
+    const P = parseFloat(slideEmiAmount.value);
+    const R = parseFloat(slideEmiRate.value) / 12 / 100;
+    const N = parseFloat(slideEmiTenure.value) * 12;
 
-    valEmiAmount.innerText = formatCurrency(P);
-    valEmiRate.innerText = inputEmiRate.value + "%";
-    valEmiTenure.innerText = inputEmiTenure.value + " Years";
+    labelEmiAmount.innerText = formatCurrency(P);
+    labelEmiRate.innerText = slideEmiRate.value + "%";
+    labelEmiTenure.innerText = slideEmiTenure.value + " Years";
 
-    // EMI formula: P * r * (1 + r)^n / ((1 + r)^n - 1)
     const emi = (P * R * Math.pow(1 + R, N)) / (Math.pow(1 + R, N) - 1);
     const totalPayment = emi * N;
     const totalInterest = totalPayment - P;
 
-    resultEmiMonthly.innerText = formatCurrency(emi);
-    resultEmiPrincipal.innerText = formatCurrency(P);
-    resultEmiInterest.innerText = formatCurrency(totalInterest);
-    resultEmiTotal.innerText = formatCurrency(totalPayment);
+    emiMonthlyResult.innerText = formatCurrency(emi);
+    emiPrincipalResult.innerText = formatCurrency(P);
+    emiInterestResult.innerText = formatCurrency(totalInterest);
+    emiTotalResult.innerText = formatCurrency(totalPayment);
   }
 
-  inputEmiAmount.addEventListener("input", calculateEmi);
-  inputEmiRate.addEventListener("input", calculateEmi);
-  inputEmiTenure.addEventListener("input", calculateEmi);
+  slideEmiAmount.addEventListener("input", runEmiCalc);
+  slideEmiRate.addEventListener("input", runEmiCalc);
+  slideEmiTenure.addEventListener("input", runEmiCalc);
 
-  // Eligibility Logic
-  const inputElIncome = document.getElementById("input-el-income");
-  const inputElObligations = document.getElementById("input-el-obligations");
-  const inputElRate = document.getElementById("input-el-rate");
-  const inputElTenure = document.getElementById("input-el-tenure");
+  // Eligibility Inputs
+  const slideElIncome = document.getElementById("slide-el-income");
+  const slideElObligations = document.getElementById("slide-el-obligations");
+  const slideElRate = document.getElementById("slide-el-rate");
+  const slideElTenure = document.getElementById("slide-el-tenure");
 
-  const valElIncome = document.getElementById("val-el-income");
-  const valElObligations = document.getElementById("val-el-obligations");
-  const valElRate = document.getElementById("val-el-rate");
-  const valElTenure = document.getElementById("val-el-tenure");
+  // Eligibility Labels
+  const labelElIncome = document.getElementById("label-el-income");
+  const labelElObligations = document.getElementById("label-el-obligations");
+  const labelElRate = document.getElementById("label-el-rate");
+  const labelElTenure = document.getElementById("label-el-tenure");
 
-  const resultElAmount = document.getElementById("result-el-amount");
-  const resultElEmi = document.getElementById("result-el-emi");
-  const resultElTenureVal = document.getElementById("result-el-tenure-val");
+  // Eligibility Results
+  const elAmountResult = document.getElementById("el-amount-result");
+  const elEmiResult = document.getElementById("el-emi-result");
+  const elTenureResult = document.getElementById("el-tenure-result");
 
-  function calculateEligibility() {
-    const income = parseFloat(inputElIncome.value);
-    const obligations = parseFloat(inputElObligations.value);
-    const rate = parseFloat(inputElRate.value);
-    const tenureY = parseFloat(inputElTenure.value);
+  function runEligibilityCalc() {
+    const income = parseFloat(slideElIncome.value);
+    const obligations = parseFloat(slideElObligations.value);
+    const rate = parseFloat(slideElRate.value);
+    const tenureY = parseFloat(slideElTenure.value);
 
-    valElIncome.innerText = formatCurrency(income);
-    valElObligations.innerText = formatCurrency(obligations);
-    valElRate.innerText = rate + "%";
-    valElTenure.innerText = tenureY + " Years";
+    labelElIncome.innerText = formatCurrency(income);
+    labelElObligations.innerText = formatCurrency(obligations);
+    labelElRate.innerText = rate + "%";
+    labelElTenure.innerText = tenureY + " Years";
 
     // FOIR of 50%
     const maxEmi = (income * 0.5) - obligations;
-    resultElEmi.innerText = formatCurrency(Math.max(0, maxEmi));
-    resultElTenureVal.innerText = tenureY + " Years";
+    elEmiResult.innerText = formatCurrency(Math.max(0, maxEmi));
+    elTenureResult.innerText = tenureY + " Years";
 
     if (maxEmi <= 0) {
-      resultElAmount.innerText = "₹0";
+      elAmountResult.innerText = "₹0";
       return;
     }
 
     const R = rate / 12 / 100;
     const N = tenureY * 12;
-
-    // Principal calculation based on Max EMI:
-    // P = EMI * ((1 + r)^n - 1) / (r * (1 + r)^n)
     const eligibleLoan = maxEmi * (Math.pow(1 + R, N) - 1) / (R * Math.pow(1 + R, N));
-    resultElAmount.innerText = formatCurrency(eligibleLoan);
+    elAmountResult.innerText = formatCurrency(eligibleLoan);
   }
 
-  inputElIncome.addEventListener("input", calculateEligibility);
-  inputElObligations.addEventListener("input", calculateEligibility);
-  inputElRate.addEventListener("input", calculateEligibility);
-  inputElTenure.addEventListener("input", calculateEligibility);
+  slideElIncome.addEventListener("input", runEligibilityCalc);
+  slideElObligations.addEventListener("input", runEligibilityCalc);
+  slideElRate.addEventListener("input", runEligibilityCalc);
+  slideElTenure.addEventListener("input", runEligibilityCalc);
 
-  // Conversion Hook Hookings
-  const emiPreapprove = document.getElementById("btn-preapprove-emi");
-  const elPreapprove = document.getElementById("btn-preapprove-el");
+  // Smooth Scroll and prefill
+  const emiApplyBtn = document.getElementById("emi-preapply-btn");
+  const elApplyBtn = document.getElementById("el-preapply-btn");
 
-  function scrollToContactAndPrefill(amount, typeMsg) {
-    const requiredAmountField = document.getElementById("lead-required-amount");
-    const messageField = document.getElementById("lead-message");
+  function handlePreapply(amount, typeText) {
     const contactSection = document.getElementById("contact");
-
-    if (requiredAmountField) {
-      requiredAmountField.value = amount;
-    }
-    if (messageField) {
-      messageField.value = `Inquiry based on calculator output: I verified my metrics and would like to get pre-approved for a loan of ${formatCurrency(amount)}. (${typeMsg})`;
+    const leadMsgField = document.getElementById("lead-message");
+    
+    if (leadMsgField) {
+      leadMsgField.value = `I calculated my numbers and would like to pre-apply for a loan of ₹${Math.round(amount).toLocaleString('en-IN')} (${typeText}).`;
     }
     if (contactSection) {
       contactSection.scrollIntoView({ behavior: "smooth" });
     }
   }
 
-  emiPreapprove.addEventListener("click", function () {
-    scrollToContactAndPrefill(parseFloat(inputEmiAmount.value), "EMI Calculation");
+  emiApplyBtn.addEventListener("click", function () {
+    handlePreapply(parseFloat(slideEmiAmount.value), "EMI Calculator");
   });
 
-  elPreapprove.addEventListener("click", function () {
-    // get calculated eligible amount
-    const income = parseFloat(inputElIncome.value);
-    const obligations = parseFloat(inputElObligations.value);
+  elApplyBtn.addEventListener("click", function () {
+    const income = parseFloat(slideElIncome.value);
+    const obligations = parseFloat(slideElObligations.value);
     const maxEmi = (income * 0.5) - obligations;
     if (maxEmi > 0) {
-      const R = parseFloat(inputElRate.value) / 12 / 100;
-      const N = parseFloat(inputElTenure.value) * 12;
+      const R = parseFloat(slideElRate.value) / 12 / 100;
+      const N = parseFloat(slideElTenure.value) * 12;
       const eligibleLoan = maxEmi * (Math.pow(1 + R, N) - 1) / (R * Math.pow(1 + R, N));
-      scrollToContactAndPrefill(eligibleLoan, "Loan Eligibility Check");
+      handlePreapply(eligibleLoan, "Eligibility Check");
     } else {
-      scrollToContactAndPrefill(100000, "Eligibility Request");
+      handlePreapply(100000, "Eligibility Request");
     }
   });
 
-  // Run initial calculations
-  calculateEmi();
-  calculateEligibility();
+  runEmiCalc();
+  runEligibilityCalc();
 });
 </script>

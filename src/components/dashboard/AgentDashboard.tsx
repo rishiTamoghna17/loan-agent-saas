@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useAgentDashboard,
   PersonaType,
@@ -78,30 +78,42 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
     setActiveFollowUpLead(foundLead);
   };
 
-  const [downloadingLeadId, setDownloadingLeadId] = useState<string | null>(null);
+  const [activeDropdownLeadId, setActiveDropdownLeadId] = useState<string | null>(null);
+  const [downloadingDocPath, setDownloadingDocPath] = useState<string | null>(null);
 
-  const handleDownloadDocuments = async (documents: string[], leadId: string) => {
-    if (!documents || documents.length === 0) return;
-    setDownloadingLeadId(leadId);
+  const handleDownloadSingleDocument = async (docPath: string) => {
+    setDownloadingDocPath(docPath);
     try {
-      const res = await getSecureDownloadUrls(documents);
-      if (res.success && res.urls && res.urls.length > 0) {
-        res.urls.forEach((url) => {
-          if (url) {
-            window.open(url, "_blank");
-          }
-        });
-        triggerToast("Secure download URL(s) generated!");
+      const res = await getSecureDownloadUrls([docPath]);
+      if (res.success && res.urls && res.urls[0]) {
+        window.open(res.urls[0], "_blank");
+        triggerToast("Secure download URL generated!");
       } else {
-        alert(res.error || "Failed to generate signed download URLs.");
+        alert(res.error || "Failed to generate signed download URL.");
       }
     } catch (err: any) {
-      console.error("Error fetching signed URLs:", err);
-      alert("An error occurred while fetching secure download URLs: " + err.message);
+      console.error("Error fetching signed URL:", err);
+      alert("An error occurred while fetching secure download URL: " + err.message);
     } finally {
-      setDownloadingLeadId(null);
+      setDownloadingDocPath(null);
     }
   };
+
+  useEffect(() => {
+    if (!activeDropdownLeadId) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-dropdown="true"]')) {
+        setActiveDropdownLeadId(null);
+      }
+    };
+
+    document.addEventListener("click", handleOutsideClick);
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+    };
+  }, [activeDropdownLeadId]);
 
   return (
     <div className="relative min-h-screen bg-slate-50/50 p-4 sm:p-6 lg:p-8">
@@ -339,23 +351,68 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                             {lead.status === "new" ? "New" : lead.status === "in_progress" ? "In Progress" : "Converted"}
                           </span>
                           {lead.documents && lead.documents.length > 0 && (
-                            <button
-                              type="button"
-                              disabled={downloadingLeadId === lead.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownloadDocuments(lead.documents || [], lead.id);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-md bg-blue-600 hover:bg-blue-700 px-2.5 py-0.5 text-xs font-bold text-white shadow-sm transition-colors border border-blue-700"
-                              title="Click to securely request temporary signed download URLs"
-                            >
-                              {downloadingLeadId === lead.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Paperclip className="h-3.5 w-3.5" />
+                            <div className="relative inline-block" data-dropdown="true">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveDropdownLeadId(activeDropdownLeadId === lead.id ? null : lead.id);
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200/60 px-2.5 py-0.5 text-xs font-semibold text-slate-600 transition-all shadow-sm"
+                                title="Click to view documents"
+                              >
+                                <Paperclip className="h-3 w-3 text-slate-500" />
+                                <span>{lead.documents.length} {lead.documents.length === 1 ? "File" : "Files"}</span>
+                              </button>
+
+                              {activeDropdownLeadId === lead.id && (
+                                <div className="absolute left-0 mt-2 w-72 rounded-xl bg-white p-3 shadow-xl border border-slate-200 z-40 text-left animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Attached Documents</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveDropdownLeadId(null);
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                    {lead.documents.map((doc) => {
+                                      const fileName = doc.split("/").pop() || doc;
+                                      const isDownloading = downloadingDocPath === doc;
+                                      return (
+                                        <div key={doc} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100/80 hover:bg-slate-100/80 transition-colors">
+                                          <span className="text-xs font-medium text-slate-700 truncate max-w-[160px]" title={fileName}>
+                                            {fileName}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            disabled={downloadingDocPath !== null}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDownloadSingleDocument(doc);
+                                            }}
+                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                          >
+                                            {isDownloading ? (
+                                              <Loader2 className="h-3 w-3 animate-spin" />
+                                            ) : (
+                                              <>
+                                                Download <ArrowUpRight className="h-3 w-3" />
+                                              </>
+                                            )}
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               )}
-                              <span>{lead.documents.length} {lead.documents.length === 1 ? "File" : "Files"}</span>
-                            </button>
+                            </div>
                           )}
                         </div>
                         <p className="text-xs text-slate-500 flex items-center gap-1.5">

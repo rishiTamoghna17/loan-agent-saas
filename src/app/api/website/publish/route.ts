@@ -9,6 +9,7 @@ function escapeYamlString(val: string): string {
 }
 
 function generateYamlFrontMatter(agent: {
+  id: string;
   agent_name: string;
   role?: string | null;
   business_name: string;
@@ -20,9 +21,11 @@ function generateYamlFrontMatter(agent: {
   chosen_theme?: string | null;
   services?: any;
   description?: string | null;
+  licensing_info?: string | null;
 }) {
   const lines = [
     "---",
+    `agent_id: ${escapeYamlString(agent.id)}`,
     `title: ${escapeYamlString(agent.agent_name)}`,
     `role: ${escapeYamlString(agent.role || "")}`,
     `company: ${escapeYamlString(agent.business_name)}`,
@@ -32,6 +35,7 @@ function generateYamlFrontMatter(agent: {
     `photo: ${escapeYamlString(agent.photo_url || "")}`,
     `logo: ${escapeYamlString(agent.logo_url || "")}`,
     `theme: ${escapeYamlString(agent.chosen_theme || "authority")}`,
+    `licensing_info: ${escapeYamlString(agent.licensing_info || "")}`,
     // Backward compatibility with existing default templates in local testing
     `name: ${escapeYamlString(agent.agent_name)}`,
     `bio: ${escapeYamlString(agent.description || "")}`,
@@ -108,6 +112,7 @@ export async function POST(request: Request) {
     phone,
     email,
     whatsapp,
+    licensing_info,
     logo,
     photo,
     chosen_theme,
@@ -132,6 +137,7 @@ export async function POST(request: Request) {
       phone: phone || "",
       email: email || "",
       whatsapp_number: whatsapp || "",
+      licensing_info: licensing_info || null,
       logo_url: logo || null,
       photo_url: photo || null,
       chosen_theme: chosen_theme || "authority",

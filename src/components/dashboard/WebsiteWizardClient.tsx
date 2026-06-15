@@ -44,6 +44,7 @@ interface WebsiteWizardClientProps {
     slug?: string | null;
     chosen_theme?: string | null;
     services?: any;
+    licensing_info?: string | null;
   };
 }
 
@@ -180,7 +181,8 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
     bio: agent.description || agent.bio || "Marcus is dedicated to helping families navigate the home purchase process. With deep local ties and over 15 years of industry experience, he coordinates personalized terms and loans.",
     phone: agent.phone || "",
     whatsapp: agent.whatsapp_number || agent.whatsapp || "",
-    email: agent.email || ""
+    email: agent.email || "",
+    licensingInfo: agent.licensing_info || ""
   });
 
   // Preview options
@@ -273,6 +275,7 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
           phone: formData.phone,
           email: formData.email,
           whatsapp: formData.whatsapp,
+          licensing_info: formData.licensingInfo,
           logo: logoPreview,
           photo: photoPreview,
           chosen_theme: selectedTemplate,
@@ -713,6 +716,18 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
+                      className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">REGISTRATION / LICENSING INFO (OPTIONAL)</label>
+                    <input
+                      type="text"
+                      name="licensingInfo"
+                      value={formData.licensingInfo}
+                      onChange={handleInputChange}
+                      placeholder="e.g., NMLS #123456 or RERA Reg No."
                       className="w-full bg-slate-950/80 border border-slate-800 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none"
                     />
                   </div>
