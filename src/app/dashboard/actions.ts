@@ -1184,3 +1184,28 @@ export async function deleteAgentMediaFile(fileName: string) {
     return { success: false, error: err.message || "Failed to delete file" };
   }
 }
+
+export async function getSecureDownloadUrls(filePaths: string[]) {
+  const { supabase } = await requireAgent();
+  const urls: string[] = [];
+
+  for (let filePath of filePaths) {
+    if (filePath.startsWith("secured-docs/")) {
+      filePath = filePath.substring("secured-docs/".length);
+    }
+    const { data, error } = await supabase.storage
+      .from("secured-docs")
+      .createSignedUrl(filePath, 60);
+
+    if (error) {
+      console.error(`Error signing URL for path ${filePath}:`, error);
+      return { success: false, error: `Failed to retrieve signed URL: ${error.message}` };
+    }
+    if (data?.signedUrl) {
+      urls.push(data.signedUrl);
+    }
+  }
+
+  return { success: true, urls };
+}
+

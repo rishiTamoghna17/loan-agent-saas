@@ -29,6 +29,7 @@ export interface LeadData {
   status: "new" | "in_progress" | "converted";
   lastContacted: string;
   details: string;
+  documents?: string[];
 }
 
 export interface LiveFeedEvent {
@@ -64,8 +65,8 @@ const mockCampaigns: Record<PersonaType, CampaignData[]> = {
 
 const mockLeads: Record<PersonaType, LeadData[]> = {
   loans: [
-    { id: "l-l1", name: "Anjali Gupta", email: "anjali.g@example.com", phone: "+91 98765 43210", status: "new", lastContacted: "10 mins ago", details: "Home Loan · ₹45L" },
-    { id: "l-l2", name: "Rohan Malhotra", email: "rohan.m@example.com", phone: "+91 99988 77766", status: "in_progress", lastContacted: "2 hours ago", details: "Business Loan · ₹25L" },
+    { id: "l-l1", name: "Anjali Gupta", email: "anjali.g@example.com", phone: "+91 98765 43210", status: "new", lastContacted: "10 mins ago", details: "Home Loan · ₹45L", documents: ["secured-docs/agent-123/lead-l1/income_proof.pdf", "secured-docs/agent-123/lead-l1/pan_card.jpg"] },
+    { id: "l-l2", name: "Rohan Malhotra", email: "rohan.m@example.com", phone: "+91 99988 77766", status: "in_progress", lastContacted: "2 hours ago", details: "Business Loan · ₹25L", documents: ["secured-docs/agent-123/lead-l2/itr_receipt.pdf"] },
     { id: "l-l3", name: "Pooja Hegde", email: "pooja.h@example.com", phone: "+91 91234 56789", status: "converted", lastContacted: "1 day ago", details: "Car Loan · ₹12L" },
     { id: "l-l4", name: "Vikram Rathore", email: "vikram.r@example.com", phone: "+91 98888 11111", status: "in_progress", lastContacted: "2 days ago", details: "Gold Loan · ₹8L" },
     { id: "l-l5", name: "Sneha Nair", email: "sneha.n@example.com", phone: "+91 97777 66666", status: "new", lastContacted: "3 days ago", details: "Education Loan · ₹15L" }

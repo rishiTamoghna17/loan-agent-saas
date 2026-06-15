@@ -27,8 +27,10 @@ import {
   Store,
   ChevronRight,
   Loader2,
-  X
+  X,
+  Paperclip
 } from "lucide-react";
+import { getSecureDownloadUrls } from "@/app/dashboard/actions";
 
 interface AgentDashboardProps {
   agentId: string;
@@ -74,6 +76,31 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
       details: persona === "loans" ? "Home Loan enquiry" : persona === "retail" ? "Product catalog enquiry" : "Marketing contract pitch"
     };
     setActiveFollowUpLead(foundLead);
+  };
+
+  const [downloadingLeadId, setDownloadingLeadId] = useState<string | null>(null);
+
+  const handleDownloadDocuments = async (documents: string[], leadId: string) => {
+    if (!documents || documents.length === 0) return;
+    setDownloadingLeadId(leadId);
+    try {
+      const res = await getSecureDownloadUrls(documents);
+      if (res.success && res.urls && res.urls.length > 0) {
+        res.urls.forEach((url) => {
+          if (url) {
+            window.open(url, "_blank");
+          }
+        });
+        triggerToast("Secure download URL(s) generated!");
+      } else {
+        alert(res.error || "Failed to generate signed download URLs.");
+      }
+    } catch (err: any) {
+      console.error("Error fetching signed URLs:", err);
+      alert("An error occurred while fetching secure download URLs: " + err.message);
+    } finally {
+      setDownloadingLeadId(null);
+    }
   };
 
   return (
@@ -311,6 +338,25 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                             }`}>
                             {lead.status === "new" ? "New" : lead.status === "in_progress" ? "In Progress" : "Converted"}
                           </span>
+                          {lead.documents && lead.documents.length > 0 && (
+                            <button
+                              type="button"
+                              disabled={downloadingLeadId === lead.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadDocuments(lead.documents || [], lead.id);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md bg-blue-600 hover:bg-blue-700 px-2.5 py-0.5 text-xs font-bold text-white shadow-sm transition-colors border border-blue-700"
+                              title="Click to securely request temporary signed download URLs"
+                            >
+                              {downloadingLeadId === lead.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Paperclip className="h-3.5 w-3.5" />
+                              )}
+                              <span>{lead.documents.length} {lead.documents.length === 1 ? "File" : "Files"}</span>
+                            </button>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500 flex items-center gap-1.5">
                           <span className="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
