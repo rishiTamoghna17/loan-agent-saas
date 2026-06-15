@@ -7,9 +7,9 @@ export const runtime = "nodejs";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { subdomain: string; path?: string[] } }
+  { params }: { params: { agentId: string; path?: string[] } }
 ) {
-  const { subdomain } = params;
+  const { agentId } = params;
   const pathSegments = params.path || [];
 
   // Reconstruct file path from path segments
@@ -23,7 +23,7 @@ export async function GET(
 
   try {
     // 1. Try to load the file from the database (primary source for serverless Vercel)
-    const dbFile = await getWebsiteFile(subdomain, "slug", relativeFilePath);
+    const dbFile = await getWebsiteFile(agentId, "id", relativeFilePath);
     
     if (dbFile) {
       return new NextResponse(dbFile.content, {
@@ -39,7 +39,7 @@ export async function GET(
       process.cwd(),
       "public",
       "public-sites",
-      subdomain,
+      agentId,
       relativeFilePath
     );
 
@@ -79,7 +79,7 @@ export async function GET(
 
     return new NextResponse("Static website file not found.", { status: 404 });
   } catch (error) {
-    console.error(`Error serving compiled site file for subdomain ${subdomain}/${relativeFilePath}:`, error);
+    console.error(`Error serving compiled site file for agentId ${agentId}/${relativeFilePath}:`, error);
     return new NextResponse("Failed to read static file.", { status: 500 });
   }
 }

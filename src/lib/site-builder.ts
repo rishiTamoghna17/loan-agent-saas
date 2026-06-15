@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { createAdminClient } from "./supabase/admin";
 
 const execPromise = promisify(exec);
 
@@ -86,30 +87,10 @@ export function stringifyYaml(obj: any, indent = 0): string {
  * @returns The public URL of the compiled agent site.
  */
 export async function generateAgentSite(agentId: string, agentData: AgentData): Promise<string> {
-  // Define working directory in /tmp
+  // Define working directories inside /tmp (always writable, even in Vercel serverless environments)
   const tempDir = path.join("/tmp", "hugo-builds", agentId);
+  const destDir = path.join("/tmp", "hugo-outputs", agentId);
   const templateDir = path.join(process.cwd(), "hugo-templates", "default");
-
-  // Determine final publishing destination
-  // We use HUGO_PUBLISH_DIR if defined, or check if /public-sites is writable.
-  // If not writable (e.g. on macOS local dev), we fall back to process.cwd() + '/public-sites'
-  let destDir = process.env.HUGO_PUBLISH_DIR 
-    ? path.join(process.env.HUGO_PUBLISH_DIR, agentId)
-    : path.join("/public-sites", agentId);
-
-  // Check write permissions for destDir. Fallback to local workspace if root is not writable
-  try {
-    const parentDir = path.dirname(destDir);
-    fs.mkdirSync(parentDir, { recursive: true });
-    // Try creating a temporary directory to verify write permissions
-    const testPath = path.join(parentDir, `.write-test-${agentId}`);
-    fs.mkdirSync(testPath, { recursive: true });
-    fs.rmdirSync(testPath);
-  } catch (error) {
-    console.warn(`Destination parent directory not writable. Falling back to local workspace directory for local testing.`);
-    destDir = path.join(process.cwd(), "public", "public-sites", agentId);
-    fs.mkdirSync(path.dirname(destDir), { recursive: true });
-  }
 
   try {
     // 1. Setup Build Directory
@@ -201,22 +182,161 @@ ${servicesListMarkdown}
     const command = `hugo --source "${tempDir}" --destination "${destDir}"`;
     await execPromise(command);
 
-    // 4. Return Public URL
+    // 4. Clean up existing files in the database for this agent
+    const adminClient = createAdminClient();
+    const { error: deleteError } = await adminClient
+      .from("agent_website_files")
+      .delete()
+      .eq("agent_id", agentId);
+
+    if (deleteError) {
+      throw new Error(`Failed to delete old site files: ${deleteError.message}`);
+    }
+
+    // 5. Read all compiled files and upload to the database
+    const files = getAllFiles(destDir);
+    const records = files.map((file) => {
+      const relativePath = path.relative(destDir, file);
+      const fileBuffer = fs.readFileSync(file);
+      const base64Content = fileBuffer.toString("base64");
+      return {
+        agent_id: agentId,
+        file_path: relativePath,
+        file_content: base64Content,
+        mime_type: getMimeType(file)
+      };
+    });
+
+    if (records.length > 0) {
+      const { error: insertError } = await adminClient
+        .from("agent_website_files")
+        .insert(records);
+
+      if (insertError) {
+        throw new Error(`Failed to upload compiled files to database: ${insertError.message}`);
+      }
+    }
+
+    // 6. Optional: Mirror to local filesystem for IDE/local dev inspection
+    try {
+      const localDestDir = path.join(process.cwd(), "public", "public-sites", agentId);
+      if (fs.existsSync(localDestDir)) {
+        fs.rmSync(localDestDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(localDestDir, { recursive: true });
+      fs.cpSync(destDir, localDestDir, { recursive: true });
+    } catch (localWriteError) {
+      console.warn("Local filesystem mirroring skipped (expected in read-only environment):", localWriteError);
+    }
+
+    // 7. Return Public URL
     const baseUrl = process.env.HUGO_BASE_URL || "https://sites.leadhub.com";
     return `${baseUrl}/${agentId}`;
 
   } catch (error: any) {
-    // Collect output logs if it's a CLI failure
     const logs = error.stdout || error.stderr || error.message || String(error);
     throw new Error(`Hugo compilation error:\n${logs}`);
   } finally {
-    // Securely delete temporary folder to prevent disk bloating
+    // Securely delete temporary folders to prevent disk bloating
     try {
       if (fs.existsSync(tempDir)) {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
+      if (fs.existsSync(destDir)) {
+        fs.rmSync(destDir, { recursive: true, force: true });
+      }
     } catch (cleanupError) {
-      console.error(`Failed to clean up temporary directory ${tempDir}:`, cleanupError);
+      console.error(`Failed to clean up temporary directories:`, cleanupError);
     }
   }
+}
+
+// Helper to recursively get all files in a directory
+function getAllFiles(dirPath: string, arrayOfFiles: string[] = []): string[] {
+  const files = fs.readdirSync(dirPath);
+
+  files.forEach((file) => {
+    const fullPath = path.join(dirPath, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
+    } else {
+      arrayOfFiles.push(fullPath);
+    }
+  });
+
+  return arrayOfFiles;
+}
+
+// Map extensions to mime types
+function getMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeTypes: { [key: string]: string } = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".xml": "application/xml",
+    ".txt": "text/plain; charset=utf-8",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
+  };
+  return mimeTypes[ext] || "application/octet-stream";
+}
+
+/**
+ * Retrieves a compiled website file from the database.
+ */
+export async function getWebsiteFile(agentIdentifier: string, type: "slug" | "id", relativeFilePath: string) {
+  const adminClient = createAdminClient();
+  let agentId = agentIdentifier;
+
+  if (type === "slug") {
+    const { data: agent, error: agentError } = await adminClient
+      .from("agents")
+      .select("id")
+      .eq("website_slug", agentIdentifier)
+      .single();
+
+    if (agentError || !agent) {
+      // Fallback: try checking if it is the agent's old "slug" column
+      const { data: agentFallback, error: fallbackError } = await adminClient
+        .from("agents")
+        .select("id")
+        .eq("slug", agentIdentifier)
+        .single();
+
+      if (fallbackError || !agentFallback) {
+        return null;
+      }
+      agentId = agentFallback.id;
+    } else {
+      agentId = agent.id;
+    }
+  }
+
+  // Retrieve file from database
+  const { data: fileRecord, error: fileError } = await adminClient
+    .from("agent_website_files")
+    .select("file_content, mime_type")
+    .eq("agent_id", agentId)
+    .eq("file_path", relativeFilePath)
+    .single();
+
+  if (fileError || !fileRecord) {
+    return null;
+  }
+
+  return {
+    content: Buffer.from(fileRecord.file_content, "base64"),
+    mimeType: fileRecord.mime_type
+  };
 }
