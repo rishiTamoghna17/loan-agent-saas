@@ -46,6 +46,7 @@ interface WebsiteWizardClientProps {
     services?: any;
     licensing_info?: string | null;
   };
+  showWelcome?: boolean;
 }
 
 function compressAndResizeImage(
@@ -112,9 +113,10 @@ function compressAndResizeImage(
   });
 }
 
-export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
+export function WebsiteWizardClient({ agent, showWelcome = false }: WebsiteWizardClientProps) {
   // Wizard steps: 0 (Template select), 1 (Identity), 2 (Messaging), 3 (Services), 4 (Contact)
   const [step, setStep] = useState(0);
+  const [welcomeOpen, setWelcomeOpen] = useState(showWelcome);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(agent.chosen_theme || "authority");
 
   // File upload states (as base64 data URLs)
@@ -380,6 +382,25 @@ export function WebsiteWizardClient({ agent }: WebsiteWizardClientProps) {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      {welcomeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-8 shadow-2xl text-center space-y-6 transform transition-all">
+            <div className="mx-auto w-16 h-16 bg-teal-500/10 border border-teal-500/30 rounded-full flex items-center justify-center text-teal-400">
+              <Sparkles className="h-8 w-8 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-white">Your account is ready.</h3>
+              <p className="text-slate-400 text-sm">Now let&apos;s build your website.</p>
+            </div>
+            <button
+              onClick={() => setWelcomeOpen(false)}
+              className="w-full py-3 px-6 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-xl transition-all duration-200 shadow-lg shadow-teal-500/10"
+            >
+              Let&apos;s Start
+            </button>
+          </div>
+        </div>
+      )}
       {/* Page Header */}
       <div className="flex justify-between items-start mb-8">
         <div>

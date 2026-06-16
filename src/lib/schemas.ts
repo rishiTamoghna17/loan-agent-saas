@@ -64,8 +64,24 @@ export const profileSchema = z.object({
     .or(z.literal(""))
 });
 
-export const signupSchema = profileSchema.extend({
-  password: z.string().min(8, "Password must be at least 8 characters")
+export const signupSchema = z.object({
+  business_name: z.string().trim().min(2, "Business name is required").max(100),
+  agent_name: z.string().trim().min(2, "Agent name is required").max(100),
+  phone: phoneSchema,
+  whatsapp_number: phoneSchema,
+  email: z.string().trim().email("Enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  city: z.string().trim().min(2, "City is required").max(80),
+  district: z.string().trim().min(2, "District is required").max(80),
+  state: z.string().trim().min(2, "State is required").max(80),
+  pincode: pincodeSchema,
+  landmark: optionalText(120),
+  slug: z
+    .string()
+    .trim()
+    .min(3, "Slug must be at least 3 characters")
+    .max(80)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens")
 });
 
 export const loginSchema = z.object({

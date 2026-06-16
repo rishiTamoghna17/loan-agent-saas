@@ -5,7 +5,11 @@ import { DesktopTopBar } from "@/components/dashboard/DesktopTopBar";
 import { getLeadFolders } from "@/app/dashboard/actions";
 import { WebsiteWizardClient } from "@/components/dashboard/WebsiteWizardClient";
 
-export default async function WebsiteWizardPage() {
+export default async function WebsiteWizardPage({
+  searchParams
+}: {
+  searchParams: { welcome?: string };
+}) {
   const supabase = createClient();
   const {
     data: { user }
@@ -41,7 +45,7 @@ export default async function WebsiteWizardPage() {
         
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto bg-slate-900">
-          <WebsiteWizardClient agent={agent} />
+          <WebsiteWizardClient agent={agent} showWelcome={searchParams?.welcome === "true"} />
         </div>
       </div>
     </div>

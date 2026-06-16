@@ -18,8 +18,6 @@ function getPublicAppUrl(request: Request) {
 
 export async function POST(request: Request) {
   const formData = await request.formData();
-  const services = formData.getAll("services_offered").map(String);
-  const logoFile = formData.get("logo_file");
 
   const parsed = signupSchema.safeParse({
     business_name: formData.get("business_name"),
@@ -33,15 +31,7 @@ export async function POST(request: Request) {
     state: formData.get("state"),
     pincode: formData.get("pincode"),
     landmark: formData.get("landmark"),
-    logo_url: formData.get("logo_url"),
-    slug: formData.get("slug"),
-    description: formData.get("description"),
-    services_offered: services,
-    primary_color: formData.get("primary_color") || "#1769ff",
-    hero_title: formData.get("hero_title"),
-    hero_subtitle: formData.get("hero_subtitle"),
-    banner_image_url: formData.get("banner_image_url"),
-    custom_domain: formData.get("custom_domain")
+    slug: formData.get("slug")
   });
 
   if (!parsed.success) {
@@ -88,22 +78,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let logoUrl = profile.logo_url || null;
-
   try {
-    if (logoFile instanceof File && logoFile.size > 0) {
-      try {
-        logoUrl = await uploadAgentLogo(data.user.id, logoFile);
-      } catch (logoUploadError) {
-        const message = logoUploadError instanceof Error ? logoUploadError.message.toLowerCase() : "";
-        if (!message.includes("row-level security")) {
-          throw logoUploadError;
-        }
-
-        logoUrl = await logoFileToDataUrl(logoFile);
-      }
-    }
-
     const agent = await insertAgentProfile({
       user_id: data.user.id,
       business_name: profile.business_name,
@@ -116,15 +91,15 @@ export async function POST(request: Request) {
       state: profile.state,
       pincode: profile.pincode,
       landmark: profile.landmark || null,
-      logo_url: logoUrl,
+      logo_url: null,
       slug: profile.slug,
-      description: profile.description || null,
-      services_offered: profile.services_offered,
-      primary_color: profile.primary_color,
-      hero_title: profile.hero_title || null,
-      hero_subtitle: profile.hero_subtitle || null,
-      banner_image_url: profile.banner_image_url || null,
-      custom_domain: profile.custom_domain || null
+      description: null,
+      services_offered: ["Personal Loan", "Business Loan", "Home Loan"],
+      primary_color: "#1769ff",
+      hero_title: null,
+      hero_subtitle: null,
+      banner_image_url: null,
+      custom_domain: null
     });
 
     if (agent?.id) {
