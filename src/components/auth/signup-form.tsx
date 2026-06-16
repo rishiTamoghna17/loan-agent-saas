@@ -56,9 +56,16 @@ export function SignupForm() {
     [selectedServices]
   );
 
-  function useSuggestedSlug() {
-    if (suggestedSlug) form.setValue("slug", suggestedSlug, { shouldValidate: true });
-  }
+  useEffect(() => {
+    let generatedSlug = suggestedSlug;
+    if (generatedSlug.length < 3) {
+      generatedSlug = (generatedSlug + "-slug").slice(0, 80);
+    }
+    if (generatedSlug.length < 3) {
+      generatedSlug = "agent";
+    }
+    form.setValue("slug", generatedSlug, { shouldDirty: true, shouldValidate: true });
+  }, [form, suggestedSlug]);
 
   const syncAddressFields = useCallback(
     (address: { city: string; district: string; state: string; pincode: string }) => {
@@ -219,35 +226,6 @@ export function SignupForm() {
           <input className="field" placeholder="https://..." {...form.register("logo_url")} />
         </Field>
         <LogoFileInput onFileChange={setLogoFile} />
-        <Field label="Public slug" required error={form.formState.errors.slug?.message}>
-          <div className="flex gap-2">
-            <input className="field" {...form.register("slug")} />
-            <button type="button" className="btn-secondary shrink-0" onClick={useSuggestedSlug}>Use</button>
-          </div>
-          {slug ? <p className="mt-1 text-xs text-slate-500">/agent/{slug}</p> : null}
-        </Field>
-      </div>
-
-      <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <h2 className="text-base font-semibold text-ink">Agent branding</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <Field label="Primary color" error={form.formState.errors.primary_color?.message}>
-            <input type="color" className="h-11 w-full rounded-md border border-slate-300 bg-white p-1" {...form.register("primary_color")} />
-          </Field>
-          <Field label="Banner image URL (optional)" error={form.formState.errors.banner_image_url?.message}>
-            <input className="field" placeholder="https://..." {...form.register("banner_image_url")} />
-          </Field>
-          <Field label="Hero title (optional)" error={form.formState.errors.hero_title?.message}>
-            <input className="field" placeholder="Need a Home Loan?" {...form.register("hero_title")} />
-          </Field>
-          <Field label="Hero subtitle (optional)" error={form.formState.errors.hero_subtitle?.message}>
-            <input className="field" placeholder="Get approval assistance today." {...form.register("hero_subtitle")} />
-          </Field>
-          <Field label="Custom domain (optional)" error={form.formState.errors.custom_domain?.message}>
-            <input className="field" placeholder="rahulloans.in" {...form.register("custom_domain")} />
-            <span className="mt-1 block text-xs text-slate-500">Premium setup later. Your /agent slug works immediately.</span>
-          </Field>
-        </div>
       </div>
 
       <Field label="Description" error={form.formState.errors.description?.message} className="mt-4">
