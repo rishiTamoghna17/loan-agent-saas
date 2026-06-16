@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyApiAccess } from "@/lib/api-auth";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -66,21 +67,12 @@ function generateYamlFrontMatter(agent: {
 
 export async function POST(request: Request) {
   // 1. Authenticate user session
-  const supabase = createClient();
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : undefined;
-  
-  const {
-    data: { user },
-    error: userError
-  } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: "Authentication required to publish websites." },
-      { status: 401 }
-    );
+  const access = await verifyApiAccess(request);
+  if (access.response) {
+    return access.response;
   }
+  const user = access.user!;
+  const supabase = createClient();
 
   // 2. Retrieve GitHub tokens
   const githubToken = process.env.GITHUB_TOKEN;

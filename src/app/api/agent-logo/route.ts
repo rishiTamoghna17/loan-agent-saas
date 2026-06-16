@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
-import { uploadAgentLogoWithClient } from "@/lib/logo-upload";
+import { verifyApiAccess } from "@/lib/api-auth";
 import { createClient } from "@/lib/supabase/server";
+import { uploadAgentLogoWithClient } from "@/lib/logo-upload";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : undefined;
-  const {
-    data: { user },
-    error: userError
-  } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return NextResponse.json({ error: "Login is required before uploading a logo." }, { status: 401 });
+  const access = await verifyApiAccess(request);
+  if (access.response) {
+    return access.response;
   }
+  const user = access.user!;
 
   const formData = await request.formData();
   const file = formData.get("logo_file");
@@ -25,6 +20,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const supabase = createClient();
     const publicUrl = await uploadAgentLogoWithClient(supabase, user.id, file);
     return NextResponse.json({ publicUrl });
   } catch (error) {

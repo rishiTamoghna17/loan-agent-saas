@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { verifyApiAccess } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const userClient = createClient();
-    const {
-      data: { user },
-      error: userError
-    } = await userClient.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Authentication required before uploading files.' }, { status: 401 });
+    const access = await verifyApiAccess(request);
+    if (access.response) {
+      return access.response;
     }
+    const user = access.user!;
 
     const formData = await request.formData();
     const file = formData.get('file') as File;

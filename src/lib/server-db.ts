@@ -31,6 +31,58 @@ type AgentProfileRow = {
 
 export function getServerDb() {
   const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || process.env.POSTGRES_URL;
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  console.log("getServerDb debug:", { hasToken: !!accessToken, hasUrl: !!supabaseUrl, nodeEnv: process.env.NODE_ENV, playwrightTest: process.env.PLAYWRIGHT_TEST, useHttpsDb: process.env.USE_HTTPS_DB, connectionString: !!connectionString });
+
+  // If we have access token and are running tests, query via HTTPS Management API to bypass TCP constraints
+  if (accessToken && supabaseUrl && (process.env.USE_HTTPS_DB === "true" || process.env.NODE_ENV === "test" || process.env.PLAYWRIGHT_TEST === "true" || !connectionString)) {
+    const projectRef = process.env.SUPABASE_PROJECT_REF || getProjectRefFromUrl(supabaseUrl);
+    return {
+      query: async (text: string, params?: any[]) => {
+        let formattedSql = text;
+        if (params && params.length) {
+          params.forEach((param, index) => {
+            const placeholderRegex = new RegExp(`\\$${index + 1}(?!\\d)`, "g");
+            let valueStr = "null";
+            if (param !== null && param !== undefined) {
+              if (typeof param === "string") {
+                valueStr = `'${param.replace(/'/g, "''")}'`;
+              } else if (param instanceof Date) {
+                valueStr = `'${param.toISOString()}'`;
+              } else if (typeof param === "object") {
+                valueStr = `'${JSON.stringify(param).replace(/'/g, "''")}'::jsonb`;
+              } else {
+                valueStr = String(param);
+              }
+            }
+            formattedSql = formattedSql.replace(placeholderRegex, valueStr);
+          });
+        }
+
+        const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            query: formattedSql,
+            read_only: false
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Management API query failed: ${response.status} ${errText}`);
+        }
+
+        const rows = await response.json();
+        return { rows };
+      }
+    } as any;
+  }
 
   if (!connectionString) {
     throw new Error("Missing DATABASE_URL, SUPABASE_DB_URL, or POSTGRES_URL.");

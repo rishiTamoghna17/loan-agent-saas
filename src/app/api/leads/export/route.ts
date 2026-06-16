@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyApiAccess } from "@/lib/api-auth";
 import { createClient } from "@/lib/supabase/server";
 
 const HEADERS = [
@@ -21,24 +22,12 @@ const HEADERS = [
 ];
 
 export async function GET(request: Request) {
+  const access = await verifyApiAccess(request);
+  if (access.response) {
+    return access.response;
+  }
+  const agent = access.agent!;
   const supabase = createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-  }
-
-  const { data: agent, error: agentError } = await supabase
-    .from("agents")
-    .select("id,slug")
-    .eq("user_id", user.id)
-    .single();
-
-  if (agentError || !agent) {
-    return NextResponse.json({ error: "Agent profile not found." }, { status: 404 });
-  }
 
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim();

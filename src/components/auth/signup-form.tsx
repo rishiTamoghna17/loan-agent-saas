@@ -75,49 +75,61 @@ export function SignupForm() {
     setServerError("");
     setServerMessage("");
 
-    const signupFormData = new FormData();
-    Object.entries(values).forEach(([key, value]) => {
-      if (typeof value === "string") {
-        signupFormData.append(key, value);
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(values)
+      });
+
+      const result = (await response.json()) as {
+        status?: string;
+        code?: string;
+        message?: string;
+        error?: string;
+        retry_after?: number;
+      };
+
+      if (!response.ok) {
+        setIsSubmitting(false);
+        if (result.code === "ACCOUNT_ALREADY_EXISTS") {
+          setServerError(result.message || "An account already exists with this email. Please sign in.");
+        } else if (result.code === "RESEND_COOLDOWN") {
+          setServerError(result.message || "Please wait before requesting another verification email.");
+        } else {
+          setServerError(result.error || result.message || "Signup failed.");
+        }
+        return;
       }
-    });
 
-    const response = await fetch("/api/signup", {
-      method: "POST",
-      body: signupFormData
-    });
-    const result = (await response.json()) as { error?: string; requiresEmailConfirmation?: boolean; email?: string };
+      if (result.status === "VERIFICATION_REQUIRED" || result.status === "VERIFICATION_RESENT") {
+        setIsSubmitting(false);
+        router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
+        return;
+      }
 
-    if (!response.ok) {
+      // Fallback fallback signin if verification is not needed (though by default it is)
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password
+      });
+
       setIsSubmitting(false);
-      setServerError(result.error || "Signup failed.");
-      return;
-    }
 
-    if (result.requiresEmailConfirmation) {
+      if (error) {
+        setServerError(getFriendlyAuthError(error));
+        return;
+      }
+
+      router.push("/dashboard/website?welcome=true");
+      router.refresh();
+    } catch (e) {
       setIsSubmitting(false);
-      setServerMessage(`Account created. Check ${result.email || values.email} for the confirmation email, then log in.`);
-      setTimeout(() => {
-        router.push(`/login?email=${encodeURIComponent(result.email || values.email)}`);
-      }, 1200);
-      return;
+      setServerError("An error occurred during signup. Please try again.");
     }
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password
-    });
-
-    setIsSubmitting(false);
-
-    if (error) {
-      setServerError(getFriendlyAuthError(error));
-      return;
-    }
-
-    router.push("/dashboard/website?welcome=true");
-    router.refresh();
   }
 
   const inputClass = "w-full h-12 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 placeholder-slate-400 text-slate-900";

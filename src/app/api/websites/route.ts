@@ -1,26 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyApiAccess } from "@/lib/api-auth";
 import { generateAgentSite, AgentData } from "@/lib/site-builder";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  // 1. Authenticate user session
-  const supabase = createClient();
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : undefined;
-  
-  const {
-    data: { user },
-    error: userError
-  } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: "Authentication required to compile websites." },
-      { status: 401 }
-    );
+  // 1. Authenticate and check api access
+  const access = await verifyApiAccess(request);
+  if (access.response) {
+    return access.response;
   }
+  const user = access.user!;
 
   // 2. Parse and validate payload
   let body: any;

@@ -31,23 +31,44 @@ export async function updateSession(request: NextRequest) {
     data: { user }
   } = await supabase.auth.getUser();
 
-  const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
+  const pathname = request.nextUrl.pathname;
+
+  const isAdminPath = pathname.startsWith("/admin");
   if (isAdminPath) {
     const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(email => email.trim().toLowerCase());
     if (!user || !user.email || !adminEmails.includes(user.email.toLowerCase())) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("redirectedFrom", request.nextUrl.pathname);
+      url.pathname = "/signin";
+      url.searchParams.set("redirectedFrom", pathname);
       return NextResponse.redirect(url);
     }
   }
 
-  const protectedPath = request.nextUrl.pathname.startsWith("/dashboard");
-  if (protectedPath && !user) {
+  const isAuthProtectedPath =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/builder") ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/settings");
+
+  const isVerificationRequiredPath =
+    isAuthProtectedPath ||
+    pathname.startsWith("/agent/");
+
+  if (isAuthProtectedPath && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirectedFrom", request.nextUrl.pathname);
+    url.pathname = "/signin";
+    url.searchParams.set("redirectedFrom", pathname);
     return NextResponse.redirect(url);
+  }
+
+  if (isVerificationRequiredPath && user) {
+    const isVerified = !!user.email_confirmed_at;
+    if (!isVerified) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/verify-email";
+      url.searchParams.set("email", user.email || "");
+      return NextResponse.redirect(url);
+    }
   }
 
   if (request.nextUrl.pathname === "/") {

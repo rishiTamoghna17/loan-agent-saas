@@ -14,6 +14,8 @@ for (const file of [".env.local", ".env"]) {
   }
 }
 
+process.env.PLAYWRIGHT_TEST = "true";
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
 
 export default defineConfig({
@@ -37,6 +39,12 @@ export default defineConfig({
         command: "npm run dev",
         url: baseURL,
         reuseExistingServer: true,
-        timeout: 120_000
+        timeout: 120_000,
+        env: {
+          PLAYWRIGHT_TEST: "true",
+          SUPABASE_ACCESS_TOKEN: process.env.SUPABASE_ACCESS_TOKEN || "",
+          NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+        }
       }
 });
