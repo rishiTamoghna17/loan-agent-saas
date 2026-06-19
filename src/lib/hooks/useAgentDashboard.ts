@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getAgentDashboardData } from "@/app/dashboard/actions";
 
 export type PersonaType = "loans" | "retail" | "marketing";
 
@@ -26,7 +27,7 @@ export interface LeadData {
   name: string;
   email: string;
   phone: string;
-  status: "new" | "in_progress" | "converted";
+  status: "new" | "in_progress" | "converted" | "rejected";
   lastContacted: string;
   details: string;
   documents?: string[];
@@ -156,24 +157,68 @@ export function useAgentDashboard(agentId: string, initialPersona: PersonaType =
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
-  const [leads, setLeads] = useState<LeadData[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [liveFeed, setLiveFeed] = useState<LiveFeedEvent[]>([]);
 
-  // Simulate initial load
+  // Helper to format timestamps relative to current time
+  const getRelativeTimeText = useCallback((timestamp: Date): string => {
+    const diffMs = Date.now() - timestamp.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins === 1) return "1m ago";
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return "1h ago";
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    return timestamp.toLocaleDateString();
+  }, []);
+
+  // Fetch real data from the database
+  const fetchRealData = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    try {
+      const res = await getAgentDashboardData();
+      if (res.success && res.dashboardData) {
+        const { metrics: dbMetrics, campaigns: dbCampaigns, leads: dbLeads, liveFeed: dbFeed } = res.dashboardData;
+        setMetrics(dbMetrics);
+        setCampaigns(dbCampaigns);
+        setLeads(dbLeads);
+        
+        // Merge real events and any locally simulated events
+        setLiveFeed((prev) => {
+          const simulated = prev.filter(e => e.id.startsWith("sim-"));
+          const real = dbFeed.map((e: any) => ({
+            ...e,
+            timestamp: new Date(e.timestamp)
+          }));
+          return [...simulated, ...real].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        });
+      }
+    } catch (err) {
+      console.error("Error loading real dashboard data:", err);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }, []);
+
+  // Load real data initially
   useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => {
-      setMetrics(mockMetrics[persona]);
-      setCampaigns(mockCampaigns[persona]);
-      setLeads(mockLeads[persona]);
-      setLiveFeed(initialEvents[persona]);
-      setLoading(false);
-    }, 450);
+    fetchRealData(true);
+  }, [fetchRealData, persona]);
 
-    return () => clearTimeout(timer);
-  }, [persona]);
+  // Auto refresh real data every 30s to keep it live
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      fetchRealData(false);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loading, fetchRealData]);
 
-  // Method to trigger a webhook simulation event
+  // Method to trigger a webhook simulation event (local UI state only)
   const simulateNewWebhookEvent = useCallback(() => {
     const pool = webhookSimulationPool[persona];
     const randomIndex = Math.floor(Math.random() * pool.length);
@@ -190,7 +235,7 @@ export function useAgentDashboard(agentId: string, initialPersona: PersonaType =
 
     setLiveFeed((prev) => [newEvent, ...prev]);
 
-    // Update corresponding metrics or leads dynamically to simulate interaction
+    // Update corresponding metrics locally to simulate interaction
     setMetrics((prev) =>
       prev.map((metric) => {
         if (metric.label === "Avg. Engagement Rate") {
@@ -216,22 +261,6 @@ export function useAgentDashboard(agentId: string, initialPersona: PersonaType =
     return () => clearInterval(interval);
   }, [loading, simulateNewWebhookEvent]);
 
-  // Helper to format timestamps relative to current time
-  const getRelativeTimeText = (timestamp: Date): string => {
-    const diffMs = Date.now() - timestamp.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins === 1) return "1m ago";
-    if (diffMins < 60) return `${diffMins}m ago`;
-
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours === 1) return "1h ago";
-    if (diffHours < 24) return `${diffHours}h ago`;
-
-    return timestamp.toLocaleDateString();
-  };
-
   // Keep times updated relative to current time
   const [ticker, setTicker] = useState(0);
   useEffect(() => {
@@ -243,8 +272,17 @@ export function useAgentDashboard(agentId: string, initialPersona: PersonaType =
 
   const formattedLiveFeed = liveFeed.map((event) => ({
     ...event,
-    timeAgo: event.timeAgo === "Just now" ? "Just now" : getRelativeTimeText(event.timestamp)
+    timeAgo: event.timeAgo === "Just now" || event.id.startsWith("sim-") ? "Just now" : getRelativeTimeText(event.timestamp)
   }));
+
+  // Re-map leads dynamically to format relative time of lastContacted
+  const formattedLeads = leads.map(l => {
+    const lastContactedDate = (l as any).lastContactedISO ? new Date((l as any).lastContactedISO) : null;
+    return {
+      ...l,
+      lastContacted: lastContactedDate ? getRelativeTimeText(lastContactedDate) : l.lastContacted || "Never"
+    };
+  });
 
   return {
     persona,
@@ -252,7 +290,7 @@ export function useAgentDashboard(agentId: string, initialPersona: PersonaType =
     loading,
     metrics,
     campaigns,
-    leads,
+    leads: formattedLeads,
     liveFeed: formattedLiveFeed,
     simulateNewWebhookEvent
   };

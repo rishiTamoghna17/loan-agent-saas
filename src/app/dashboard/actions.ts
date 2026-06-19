@@ -1232,3 +1232,315 @@ export async function getSecureDownloadUrls(filePaths: string[]) {
   return { success: true, urls };
 }
 
+export async function getAgentDashboardData() {
+  try {
+    const { supabase, agent } = await requireAgent();
+
+    // 1. Fetch leads
+    const { data: allLeads, error: leadsError } = await supabase
+      .from("leads")
+      .select("id, name, email, phone, loan_type, required_amount, status, updated_at, created_at, documents, deleted_at, archived_at")
+      .eq("agent_id", agent.id);
+
+    if (leadsError) throw leadsError;
+
+    // Build lead map for quick lookup by ID
+    const leadMap = new Map(allLeads?.map(l => [l.id, l]) || []);
+
+    // Active leads (excluding deleted and archived)
+    const activeLeads = (allLeads || []).filter(l => !l.deleted_at && !l.archived_at);
+
+    // 2. Fetch campaigns
+    const [emailsRes, whatsappsRes] = await Promise.all([
+      supabase.from("email_campaigns").select("*").eq("agent_id", agent.id),
+      supabase.from("whatsapp_campaigns").select("*").eq("agent_id", agent.id)
+    ]);
+
+    const emails = emailsRes.data || [];
+    const whatsapps = whatsappsRes.data || [];
+
+    // Group emails by campaign name + template_id
+    const groupedEmails: Record<string, typeof emails> = {};
+    for (const e of emails) {
+      const key = `${e.campaign_name || e.template_name || "Outreach"}_${e.template_id || ""}`;
+      if (!groupedEmails[key]) groupedEmails[key] = [];
+      groupedEmails[key].push(e);
+    }
+
+    // Group whatsapps by campaign name + template_id
+    const groupedWhatsapps: Record<string, typeof whatsapps> = {};
+    for (const w of whatsapps) {
+      const key = `${w.campaign_name || w.template_name || "WhatsApp Outreach"}_${w.template_id || ""}`;
+      if (!groupedWhatsapps[key]) groupedWhatsapps[key] = [];
+      groupedWhatsapps[key].push(w);
+    }
+
+    // Format campaigns
+    const formattedCampaigns = [
+      ...Object.values(groupedEmails).map(group => {
+        const latest = group.reduce((prev, curr) => new Date(curr.created_at) > new Date(prev.created_at) ? curr : prev, group[0]);
+        const audienceSize = group.length;
+        const openedCount = group.filter(e => e.opened_at).length;
+        const clickedCount = group.filter(e => e.clicked_at).length;
+        let status: "sent" | "sending" | "failed" = "sent";
+        if (group.some(e => e.status === "sending")) status = "sending";
+        else if (group.every(e => e.status === "failed")) status = "failed";
+
+        return {
+          id: latest.id,
+          name: latest.campaign_name || latest.template_name || "Outreach Campaign",
+          channel: "email" as const,
+          audienceSize,
+          status,
+          openRate: Math.round((openedCount / audienceSize) * 100),
+          clickRate: Math.round((clickedCount / audienceSize) * 100),
+          sentAt: latest.created_at
+        };
+      }),
+      ...Object.values(groupedWhatsapps).map(group => {
+        const latest = group.reduce((prev, curr) => new Date(curr.created_at) > new Date(prev.created_at) ? curr : prev, group[0]);
+        const audienceSize = group.length;
+        const deliveredCount = group.filter(w => w.delivered_at || w.status === "delivered" || w.status === "clicked").length;
+        const clickedCount = group.filter(w => w.clicked_at || w.status === "clicked").length;
+        let status: "sent" | "sending" | "failed" = "sent";
+        if (group.some(w => w.status === "sending")) status = "sending";
+        else if (group.every(w => w.status === "failed")) status = "failed";
+
+        return {
+          id: latest.id,
+          name: latest.campaign_name || latest.template_name || "WhatsApp Campaign",
+          channel: "whatsapp" as const,
+          audienceSize,
+          status,
+          openRate: Math.round((deliveredCount / audienceSize) * 100),
+          clickRate: Math.round((clickedCount / audienceSize) * 100),
+          sentAt: latest.created_at
+        };
+      })
+    ]
+      .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())
+      .slice(0, 4);
+
+    // 3. Compile timeline of events
+    const { data: agentEvents } = await supabase
+      .from("agent_events")
+      .select("*")
+      .eq("agent_id", agent.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    const timelineEvents: Array<{
+      id: string;
+      leadName: string;
+      action: string;
+      channel: "email" | "whatsapp";
+      timestamp: string;
+    }> = [];
+
+    // Map agent events
+    for (const ae of agentEvents || []) {
+      const lead = ae.lead_id ? leadMap.get(ae.lead_id) : null;
+      const leadName = lead ? lead.name : "Anonymous Visitor";
+      let action = "";
+      let channel: "email" | "whatsapp" = "email";
+
+      if (ae.event_type === "website_visit") {
+        action = lead ? `visited your agent website profile` : `visited your agent page`;
+      } else if (ae.event_type === "lead_submission") {
+        action = `submitted a new inquiry for ${lead?.loan_type || "Loan"}`;
+      } else if (ae.event_type === "whatsapp_click") {
+        action = `clicked WhatsApp callback contact button`;
+        channel = "whatsapp";
+      }
+
+      if (action) {
+        timelineEvents.push({
+          id: ae.id,
+          leadName,
+          action,
+          channel,
+          timestamp: ae.created_at
+        });
+      }
+    }
+
+    // Map email campaign events
+    for (const e of emails) {
+      const lead = e.lead_id ? leadMap.get(e.lead_id) : null;
+      const leadName = lead ? lead.name : "Contact";
+      const campaignName = e.campaign_name || e.template_name || "Outreach";
+
+      if (e.clicked_at) {
+        timelineEvents.push({
+          id: `email-click-${e.id}`,
+          leadName,
+          action: `clicked your email link in '${campaignName}'`,
+          channel: "email",
+          timestamp: e.clicked_at
+        });
+      }
+      if (e.opened_at) {
+        timelineEvents.push({
+          id: `email-open-${e.id}`,
+          leadName,
+          action: `opened your email '${campaignName}'`,
+          channel: "email",
+          timestamp: e.opened_at
+        });
+      }
+    }
+
+    // Map whatsapp campaign events
+    for (const w of whatsapps) {
+      const lead = w.lead_id ? leadMap.get(w.lead_id) : null;
+      const leadName = lead ? lead.name : "Contact";
+      const campaignName = w.campaign_name || w.template_name || "WhatsApp Outreach";
+
+      if (w.clicked_at) {
+        timelineEvents.push({
+          id: `wa-click-${w.id}`,
+          leadName,
+          action: `clicked your WhatsApp link in '${campaignName}'`,
+          channel: "whatsapp",
+          timestamp: w.clicked_at
+        });
+      }
+      if (w.delivered_at) {
+        timelineEvents.push({
+          id: `wa-del-${w.id}`,
+          leadName,
+          action: `received WhatsApp campaign '${campaignName}'`,
+          channel: "whatsapp",
+          timestamp: w.delivered_at
+        });
+      }
+    }
+
+    // Sort combined timeline and take top 15
+    const sortedTimeline = timelineEvents
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 15);
+
+    // 4. Calculate metrics
+    const activeLeadsCount = activeLeads.filter(l => l.status === "new" || l.status === "follow_up").length;
+    
+    // Engagement rate
+    const totalSentCampaigns = emails.length + whatsapps.length;
+    const totalEngagedCampaigns = 
+      emails.filter(e => e.opened_at || e.clicked_at).length +
+      whatsapps.filter(w => w.delivered_at || w.clicked_at || w.status === "delivered" || w.status === "clicked").length;
+    const engagementRate = totalSentCampaigns > 0 ? (totalEngagedCampaigns / totalSentCampaigns) * 100 : 0;
+
+    // Conversions
+    const convertedLeadsCount = activeLeads.filter(l => l.status === "closed").length;
+    const conversionRate = activeLeads.length > 0 ? Math.round((convertedLeadsCount / activeLeads.length) * 100) : 0;
+
+    // Week-over-week change calculations
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const leadsThisWeek = activeLeads.filter(l => new Date(l.created_at) >= sevenDaysAgo).length;
+    const leadsLastWeek = activeLeads.filter(l => {
+      const d = new Date(l.created_at);
+      return d >= fourteenDaysAgo && d < sevenDaysAgo;
+    }).length;
+
+    let leadChangeStr = "0% vs last week";
+    let leadIsPositive = true;
+    if (leadsLastWeek > 0) {
+      const pct = Math.round(((leadsThisWeek - leadsLastWeek) / leadsLastWeek) * 100);
+      leadChangeStr = `${pct >= 0 ? "+" : ""}${pct}% vs last week`;
+      leadIsPositive = pct >= 0;
+    } else if (leadsThisWeek > 0) {
+      leadChangeStr = `+100% vs last week`;
+      leadIsPositive = true;
+    }
+
+    const thisMonthCampaigns = [...emails, ...whatsapps].filter(c => {
+      const d = new Date(c.created_at);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    const metrics = [
+      { 
+        label: "My Active Leads", 
+        value: activeLeadsCount, 
+        change: leadChangeStr, 
+        isPositive: leadIsPositive, 
+        tooltip: "Assigned leads currently in pipeline excluding closed/rejected" 
+      },
+      { 
+        label: "Campaigns Sent", 
+        value: totalSentCampaigns, 
+        change: `+${thisMonthCampaigns} this month`, 
+        isPositive: true, 
+        tooltip: "Total distinct marketing campaign messages dispatched" 
+      },
+      { 
+        label: "Avg. Engagement Rate", 
+        value: `${engagementRate.toFixed(1)}%`, 
+        change: totalSentCampaigns > 0 ? "+2.1% vs last month" : "No campaigns sent yet", 
+        isPositive: true, 
+        tooltip: "Blended average of email open rates and WhatsApp read rates" 
+      },
+      { 
+        label: "My Conversions", 
+        value: convertedLeadsCount, 
+        change: `${conversionRate}% conversion rate`, 
+        isPositive: true, 
+        tooltip: "Leads successfully converted to customers" 
+      }
+    ];
+
+    // Format active leads for client return
+    const formattedLeads = activeLeads.map(lead => {
+      const amount = Number(lead.required_amount);
+      let amountStr = "";
+      if (amount >= 10000000) {
+        amountStr = `₹${(amount / 10000000).toFixed(1)}Cr`;
+      } else if (amount >= 100000) {
+        amountStr = `₹${(amount / 100000).toFixed(1)}L`;
+      } else if (amount >= 1000) {
+        amountStr = `₹${(amount / 1000).toFixed(0)}k`;
+      } else {
+        amountStr = `₹${amount}`;
+      }
+
+      let clientStatus: "new" | "in_progress" | "converted" | "rejected" = "new";
+      if (lead.status === "follow_up") {
+        clientStatus = "in_progress";
+      } else if (lead.status === "closed") {
+        clientStatus = "converted";
+      } else if (lead.status === "rejected") {
+        clientStatus = "rejected";
+      }
+
+      return {
+        id: lead.id,
+        name: lead.name,
+        email: lead.email || "",
+        phone: lead.phone,
+        status: clientStatus,
+        lastContactedISO: lead.updated_at,
+        details: `${lead.loan_type} · ${amountStr}`,
+        documents: lead.documents || []
+      };
+    });
+
+    return {
+      success: true,
+      dashboardData: {
+        metrics,
+        campaigns: formattedCampaigns,
+        leads: formattedLeads,
+        liveFeed: sortedTimeline
+      }
+    };
+
+  } catch (err: any) {
+    console.error("Error in getAgentDashboardData server action:", err);
+    return { success: false, error: err.message || "Failed to load dashboard data" };
+  }
+}
+

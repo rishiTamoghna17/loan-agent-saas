@@ -259,67 +259,75 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {campaigns.map((campaign) => (
-                        <tr key={campaign.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <span className="font-semibold text-slate-900 block truncate max-w-[240px]" title={campaign.name}>
-                              {campaign.name}
-                            </span>
-                            <span className="text-xs text-slate-400 block mt-0.5">{campaign.sentAt}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold ${campaign.channel === "email"
-                              ? "bg-indigo-50 text-indigo-700"
-                              : "bg-emerald-50 text-emerald-700"
-                              }`}>
-                              {campaign.channel === "email" ? (
-                                <>
-                                  <Mail className="h-3 w-3" /> Email
-                                </>
-                              ) : (
-                                <>
-                                  <MessageSquare className="h-3 w-3" /> WhatsApp
-                                </>
-                              )}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right font-medium text-slate-700 tabular-nums">
-                            {campaign.audienceSize.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${campaign.status === "sent"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : campaign.status === "sending"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-rose-50 text-rose-700"
-                              }`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${campaign.status === "sent"
-                                ? "bg-emerald-500"
-                                : campaign.status === "sending"
-                                  ? "bg-amber-500 animate-pulse"
-                                  : "bg-rose-500"
-                                }`} />
-                              {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col items-end gap-1">
-                              <span className="text-xs font-bold text-slate-950">
-                                {campaign.channel === "email" ? `Open: ${campaign.openRate}%` : `Read: ${campaign.openRate}%`}
-                              </span>
-                              <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                  className="bg-brand-blue h-1.5 rounded-full"
-                                  style={{ width: `${campaign.openRate}%` }}
-                                />
-                              </div>
-                              <span className="text-[10px] text-slate-500">
-                                Click: {campaign.clickRate}%
-                              </span>
-                            </div>
+                      {campaigns.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-slate-400 text-xs">
+                            No campaigns sent yet. Send outreach emails or WhatsApp messages to track performance.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        campaigns.map((campaign) => (
+                          <tr key={campaign.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <span className="font-semibold text-slate-900 block truncate max-w-[240px]" title={campaign.name}>
+                                {campaign.name}
+                              </span>
+                              <span className="text-xs text-slate-400 block mt-0.5">{campaign.sentAt}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold ${campaign.channel === "email"
+                                ? "bg-indigo-50 text-indigo-700"
+                                : "bg-emerald-50 text-emerald-700"
+                                }`}>
+                                {campaign.channel === "email" ? (
+                                  <>
+                                    <Mail className="h-3 w-3" /> Email
+                                  </>
+                                ) : (
+                                  <>
+                                    <MessageSquare className="h-3 w-3" /> WhatsApp
+                                  </>
+                                )}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right font-medium text-slate-700 tabular-nums">
+                              {campaign.audienceSize.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${campaign.status === "sent"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : campaign.status === "sending"
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-rose-50 text-rose-700"
+                                }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${campaign.status === "sent"
+                                  ? "bg-emerald-500"
+                                  : campaign.status === "sending"
+                                    ? "bg-amber-500 animate-pulse"
+                                    : "bg-rose-500"
+                                  }`} />
+                                {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="text-xs font-bold text-slate-950">
+                                  {campaign.channel === "email" ? `Open: ${campaign.openRate}%` : `Read: ${campaign.openRate}%`}
+                                </span>
+                                <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="bg-brand-blue h-1.5 rounded-full"
+                                    style={{ width: `${campaign.openRate}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] text-slate-500">
+                                  Click: {campaign.clickRate}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -337,114 +345,122 @@ export function AgentDashboard({ agentId }: AgentDashboardProps) {
                   </span>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {leads.map((lead) => (
-                    <div key={lead.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-6 gap-4 hover:bg-slate-50/30 transition-colors">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2.5">
-                          <h3 className="font-bold text-slate-900">{lead.name}</h3>
-                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${lead.status === "new"
-                            ? "bg-sky-50 text-sky-700 ring-sky-700/10"
-                            : lead.status === "in_progress"
-                              ? "bg-amber-50 text-amber-700 ring-amber-700/10"
-                              : "bg-emerald-50 text-emerald-700 ring-emerald-700/10"
-                            }`}>
-                            {lead.status === "new" ? "New" : lead.status === "in_progress" ? "In Progress" : "Converted"}
-                          </span>
-                          {lead.documents && lead.documents.length > 0 && (
-                            <div className="relative inline-block" data-dropdown="true">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveDropdownLeadId(activeDropdownLeadId === lead.id ? null : lead.id);
-                                }}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200/60 px-2.5 py-0.5 text-xs font-semibold text-slate-600 transition-all shadow-sm"
-                                title="Click to view documents"
-                              >
-                                <Paperclip className="h-3 w-3 text-slate-500" />
-                                <span>{lead.documents.length} {lead.documents.length === 1 ? "File" : "Files"}</span>
-                              </button>
+                  {leads.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400 text-xs">
+                      No active leads in pipeline. Create a manual lead or check campaign outreach responses.
+                    </div>
+                  ) : (
+                    leads.map((lead) => (
+                      <div key={lead.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-6 gap-4 hover:bg-slate-50/30 transition-colors">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2.5">
+                            <h3 className="font-bold text-slate-900">{lead.name}</h3>
+                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${lead.status === "new"
+                              ? "bg-sky-50 text-sky-700 ring-sky-700/10"
+                              : lead.status === "in_progress"
+                                ? "bg-amber-50 text-amber-700 ring-amber-700/10"
+                                : lead.status === "converted"
+                                  ? "bg-emerald-50 text-emerald-700 ring-emerald-700/10"
+                                  : "bg-rose-50 text-rose-700 ring-rose-700/10"
+                              }`}>
+                              {lead.status === "new" ? "New" : lead.status === "in_progress" ? "In Progress" : lead.status === "converted" ? "Converted" : "Rejected"}
+                            </span>
+                            {lead.documents && lead.documents.length > 0 && (
+                              <div className="relative inline-block" data-dropdown="true">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdownLeadId(activeDropdownLeadId === lead.id ? null : lead.id);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200/60 px-2.5 py-0.5 text-xs font-semibold text-slate-600 transition-all shadow-sm"
+                                  title="Click to view documents"
+                                >
+                                  <Paperclip className="h-3 w-3 text-slate-500" />
+                                  <span>{lead.documents.length} {lead.documents.length === 1 ? "File" : "Files"}</span>
+                                </button>
 
-                              {activeDropdownLeadId === lead.id && (
-                                <div className="absolute left-0 mt-2 w-72 rounded-xl bg-white p-3 shadow-xl border border-slate-200 z-40 text-left animate-in fade-in-50 slide-in-from-top-1 duration-150">
-                                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-                                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Attached Documents</span>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setActiveDropdownLeadId(null);
-                                      }}
-                                      className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                                    >
-                                      <X className="h-3.5 w-3.5" />
-                                    </button>
+                                {activeDropdownLeadId === lead.id && (
+                                  <div className="absolute left-0 mt-2 w-72 rounded-xl bg-white p-3 shadow-xl border border-slate-200 z-40 text-left animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Attached Documents</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveDropdownLeadId(null);
+                                        }}
+                                        className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                       {lead.documents.map((doc: string) => {
+                                        const fileName = doc.split("/").pop() || doc;
+                                        const isDownloading = downloadingDocPath === doc;
+                                        return (
+                                          <div key={doc} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100/80 hover:bg-slate-100/80 transition-colors">
+                                            <span className="text-xs font-medium text-slate-700 truncate max-w-[160px]" title={fileName}>
+                                              {fileName}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              disabled={downloadingDocPath !== null}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDownloadSingleDocument(doc);
+                                              }}
+                                              className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                              {isDownloading ? (
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                              ) : (
+                                                <>
+                                                  Download <ArrowUpRight className="h-3 w-3" />
+                                                </>
+                                              )}
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                    {lead.documents.map((doc) => {
-                                      const fileName = doc.split("/").pop() || doc;
-                                      const isDownloading = downloadingDocPath === doc;
-                                      return (
-                                        <div key={doc} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100/80 hover:bg-slate-100/80 transition-colors">
-                                          <span className="text-xs font-medium text-slate-700 truncate max-w-[160px]" title={fileName}>
-                                            {fileName}
-                                          </span>
-                                          <button
-                                            type="button"
-                                            disabled={downloadingDocPath !== null}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDownloadSingleDocument(doc);
-                                            }}
-                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                          >
-                                            {isDownloading ? (
-                                              <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                              <>
-                                                Download <ArrowUpRight className="h-3 w-3" />
-                                              </>
-                                            )}
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                          <span className="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-                            {lead.details}
-                          </span>
-                          <span>·</span>
-                          <span>{lead.email}</span>
-                          <span>·</span>
-                          <span>{lead.phone}</span>
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between sm:justify-end gap-6">
-                        <div className="text-right">
-                          <p className="text-xs text-slate-400">Last Action</p>
-                          <p className="text-sm font-semibold text-slate-700 flex items-center justify-end gap-1 mt-0.5">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                            {lead.lastContacted}
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <span className="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {lead.details}
+                            </span>
+                            <span>·</span>
+                            <span>{lead.email}</span>
+                            <span>·</span>
+                            <span>{lead.phone}</span>
                           </p>
                         </div>
 
-                        <button
-                          onClick={() => setActiveFollowUpLead(lead)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300"
-                        >
-                          Interact
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
-                        </button>
+                        <div className="flex items-center justify-between sm:justify-end gap-6">
+                          <div className="text-right">
+                            <p className="text-xs text-slate-400">Last Action</p>
+                            <p className="text-sm font-semibold text-slate-700 flex items-center justify-end gap-1 mt-0.5">
+                              <Clock className="h-3.5 w-3.5 text-slate-400" />
+                              {lead.lastContacted}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => setActiveFollowUpLead(lead)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300"
+                          >
+                            Interact
+                            <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 
